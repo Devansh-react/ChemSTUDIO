@@ -1,0 +1,46 @@
+# API
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Config
+python-dotenv
+pydantic
+pydantic-settings
+
+# LangChain & LangGraph
+langchain
+langchain-core
+langchain-community
+langgraph
+langsmith
+deepagents
+langchain-huggingface
+
+# LLM Providers
+langchain-google-genai
+
+langchain-openai
+
+# Chemistry
+rdkit
+selfies
+pubchempy
+
+# RAG
+chromadb
+sentence-transformers
+faiss-cpu
+pypdf
+
+# Database
+sqlalchemy
+psycopg2-binary
+alembic
+redis
+
+# HTTP Clients
+httpx
+aiohttp
+requests
+
