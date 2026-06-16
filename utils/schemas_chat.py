@@ -10,12 +10,15 @@ class ReactionState(TypedDict):
     uploaded_docs: Optional[List[str]]
     pdf_injested:bool
     external_doc_available:bool
-    retrieved_context: List[dict] 
+    retrieved_context: List[Dict] 
     
     
     prediction:Optional[str]
     confidence:float
     mechanism:Optional[str]
+    prediction_metadata:Optional[Dict[str,str]]
+    
+    
     warnings:List[str]
     messages:Optional[List[str]]
     

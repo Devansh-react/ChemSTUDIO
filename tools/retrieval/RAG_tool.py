@@ -2,7 +2,7 @@
 
 from pdf_loader import load_pdf
 from text_splitter import split_documents
-from chroma_tool import add_documents, similarity_score_threshold , mmr_search
+from chroma_tool import add_document,similarity_score_threshold,mmr_search
 
 def ingest_pdf(pdf_path:str):
     try:
@@ -14,7 +14,7 @@ def ingest_pdf(pdf_path:str):
         for doc in chunks:
             doc.metadata["pdf_name"] = pdf_path
             
-        add_documents(chunks)
+        add_document(chunks)
         return chunks
     
     except Exception as e:

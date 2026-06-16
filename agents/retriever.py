@@ -1,5 +1,5 @@
 
-from graph.state import ReactionState 
+from utils.schemas_chat import ReactionState 
 from tools.retrieval.RAG_tool import ingest_pdf,retrieve_context,retrieve_context_mmr
 
 

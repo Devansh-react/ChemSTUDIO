@@ -1,11 +1,14 @@
 
-from graph.state import ReactionState as State
+from unittest import result
+
+from utils.schemas_chat import ReactionState as State
 from tools.chemistry import RDKit_tool
 
 def validate_agent(state:State):
     smiles = state["smiles"]
     
     result = RDKit_tool.validate_smiles(smiles)
+    
     return {
         "validation" : result["is_valid"],
         "warnings" :  result["errors"] + result["warnings"],

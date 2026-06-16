@@ -3,7 +3,7 @@
 
 from logging import warning
 from rdkit import Chem
-from rdkit.Chem import rdMolStandardize
+from rdkit.Chem.MolStandardize import rdMolStandardize
 
 MAX_ATOMS = 300
 
@@ -61,7 +61,12 @@ def validate_smiles(smiles:str):
     #  final validation 
     result["is_valid"] = len(result['errors']) == 0  
 
+    return result
+
 
     
     
     # 7 validation checks 
+    
+    
+    # we can add images of the molecules compound also in later part check rdkit website 
