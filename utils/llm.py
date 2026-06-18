@@ -6,9 +6,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Ensure your GOOGLE_API_KEY is set in your environment variables
-# os.environ["GOOGLE_API_KEY"] = "your-api-key-here"
-
 def get_gemini_model():
     return ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
@@ -16,7 +13,6 @@ def get_gemini_model():
             max_tokens=None,
             timeout=None,
             max_retries=2,
-            api_key=os.environ.get("GOOGLE_API_KEY"),
             verbose=True,
     )
     
