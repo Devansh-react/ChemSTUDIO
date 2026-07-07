@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Chem Process Studio logo" width="280"/>
+  <img src="logo.png" alt="Chem Process Studio logo" width="80%"/>
 </p>
 
 # Chem Process Studio
