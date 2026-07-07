@@ -11,30 +11,33 @@ MAX_VERIFIER_RETRIES = 2
 class InterruptDecision(TypedDict):
     interrupt: bool
     mode: Literal[
-        "pre_prediction",
         "post_prediction",
         "none"
     ]
     reason: str
 
 
-def require_human_review(state: State) -> InterruptDecision:
+def require_post_prediction_review(
+    state: State,
+) -> InterruptDecision:
+    """
+    Decide whether a human review is required
+    after prediction and verification.
+    """
 
     results = state.get("validation_results", {})
     scores = state.get("validation_scores", {})
     retries = state.get("retry_count", {})
 
-    confidence = state.get("confidence")
-    if not confidence:
-        confidence = 0.0
+    confidence = state.get("confidence", 0.0)
 
     predictor_retry = retries.get("predictor", 0)
     verifier_retry = retries.get("verifier", 0)
 
-    # -----------------------------------------
-    # No verifier output
-    # Retry middleware should handle this.
-    # -----------------------------------------
+    # ----------------------------------------
+    # No validation available
+    # Retry middleware should already handle it
+    # ----------------------------------------
 
     if not results:
         return {
@@ -43,9 +46,9 @@ def require_human_review(state: State) -> InterruptDecision:
             "reason": "Validation results unavailable."
         }
 
-    # -----------------------------------------
+    # ----------------------------------------
     # Product validation failed
-    # -----------------------------------------
+    # ----------------------------------------
 
     if (
         not results.get("product_validation", True)
@@ -58,9 +61,9 @@ def require_human_review(state: State) -> InterruptDecision:
             "reason": "product_validation_failed"
         }
 
-    # -----------------------------------------
+    # ----------------------------------------
     # Low confidence
-    # -----------------------------------------
+    # ----------------------------------------
 
     if (
         confidence < MIN_CONFIDENCE_THRESHOLD
@@ -72,9 +75,9 @@ def require_human_review(state: State) -> InterruptDecision:
             "reason": "low_confidence"
         }
 
-    # -----------------------------------------
+    # ----------------------------------------
     # Mechanism score
-    # -----------------------------------------
+    # ----------------------------------------
 
     if (
         scores.get("mechanism_score", 1.0) < 0.20
@@ -86,9 +89,9 @@ def require_human_review(state: State) -> InterruptDecision:
             "reason": "low_mechanism_score"
         }
 
-    # -----------------------------------------
+    # ----------------------------------------
     # Context score
-    # -----------------------------------------
+    # ----------------------------------------
 
     if (
         scores.get("context_score", 1.0) < 0.35
@@ -103,5 +106,8 @@ def require_human_review(state: State) -> InterruptDecision:
     return {
         "interrupt": False,
         "mode": "none",
-        "reason": "Human review not required."
+        "reason": "No human review required."
     }
+
+
+middleware_post_review = require_post_prediction_review

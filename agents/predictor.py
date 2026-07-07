@@ -5,7 +5,7 @@ def predict_reaction(state:State):
     smiles = state.get("smiles")
     canonical_smiles = state.get("canonical_smiles") or ""
     conditions = state.get("conditions",{})
-    retrieved_context = state.get("retrieved_context",[])
+    retrieved_context = state.get("retrieved_context", state.get("retrived_context", []))
     if not retrieved_context:
         retrieved_context = []
         

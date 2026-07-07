@@ -83,6 +83,9 @@ def verifier_agent(state: State):
         "confidence",
         0.0
     )
+    if not confidence:
+        confidence = 0.0
+    
 
     raw_score = (
         verify_prediction_with_context(

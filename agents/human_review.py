@@ -1,22 +1,22 @@
 from utils.schema import ReactionState as State
 from langgraph.types import interrupt
-from utils.schema import HumanFeedback as FeedbackClass
+from utils.schema import HumanFeedback 
 from typing import Literal
 
 def build_pre_payload(state:State):
     canonical_smiles_input = state.get("canonical_smiles","")
     conditions = state.get("conditions",{})
-    retrived_context = state.get("retrieved_context",[])
+    retrieved_context = state.get("retrieved_context", state.get("retrived_context", []))
     Warning = state.get("warnings",[])
     
-    if not retrived_context:
-        retrived_context = ["No document is provided by you"]
+    if not retrieved_context:
+        retrieved_context = ["No document is provided by you"]
         
     return {
         "mode":"pre_prediction",
         "canonical_smiles":canonical_smiles_input,
         "conditions":conditions,
-        "retrieved_context":retrived_context,
+        "retrieved_context":retrieved_context,
         "warnings":Warning,
         "actions": ["approve","modify","reject"]
     }
@@ -44,35 +44,45 @@ def build_post_payload(state:State):
     }
 
 
-def update_human_feed_back(state: State,response : FeedbackClass):
+def update_human_feed_back(state: State,response : HumanFeedback):
     state["human_feedback"] = response
     
 
 
-def human_review_agent(state:State, mode: Literal["pre_prediction", "post_prediction"]):
-    if mode == "pre_prediction":
-        payload =  build_pre_payload(state)
-    elif mode == "post_prediction":
-        payload =  build_post_payload(state)
-    else:
-        raise ValueError(f"Invalid mode: {mode}")
+def human_review_agent(
+    state: State,
+    mode: Literal[
+        "pre_prediction",
+        "post_prediction"
+    ]
+) -> State:
 
-    human_response = interrupt(payload)
-    
-    
-    #  reponse validation
-    valid_decision = ["approve","modify","reject","retry"]
-    decision = human_response["decision"] 
-    if decision not in valid_decision:
-        raise ValueError(f"Invalid decision: {human_response['decision']}")
-    
-    #  update the state fun 
-    update_human_feed_back(state,{
-        "mode":mode,
-        "decision":human_response["decision"],
-        "comment":human_response.get("comment",""),
-        "edited_fields":human_response.get("edited_fields",{})
-    })
-    
+    if mode == "pre_prediction":
+        payload = build_pre_payload(state)
+
+    else:
+        payload = build_post_payload(state)
+
+    response = interrupt(payload)
+
+    valid_actions = payload["actions"]
+
+    decision = response.get("decision")
+
+    if decision not in valid_actions:
+        raise ValueError(
+            f"Invalid decision : {decision}"
+        )
+
+    state["human_feedback"] = HumanFeedback(
+        mode=mode,
+        decision=decision,
+        comment=response.get("comment"),
+        edited_fields=response.get(
+            "edited_fields",
+            {}
+        )
+    )
+
     return state
 

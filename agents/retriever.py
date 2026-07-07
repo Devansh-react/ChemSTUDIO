@@ -4,10 +4,12 @@ from tools.retrieval.RAG_tool import ingest_pdf,retrieve_context,retrieve_contex
 
 
 def retriever_agent(state:ReactionState):
-    if not state.get("pdf_injested",False):
+    pdf_ingested = state.get("pdf_ingested", state.get("pdf_injested", False))
+
+    if not pdf_ingested:
         return {
-            "external_doc_available":False,
-            "retrieved_context":[]
+            "external_doc_available": False,
+            "retrieved_context": []
         }
     
     query = f"""
