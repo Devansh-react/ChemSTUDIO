@@ -43,9 +43,14 @@ def build_post_payload(state:State):
         "actions":["approve","modify","reject","retry"]
     }
 
+def update_human_feedback(
+    state: State,
+    response: HumanFeedback
+):
 
-def update_human_feed_back(state: State,response : HumanFeedback):
     state["human_feedback"] = response
+
+    return state
     
 
 
@@ -73,16 +78,15 @@ def human_review_agent(
         raise ValueError(
             f"Invalid decision : {decision}"
         )
-
-    state["human_feedback"] = HumanFeedback(
-        mode=mode,
-        decision=decision,
-        comment=response.get("comment"),
-        edited_fields=response.get(
-            "edited_fields",
-            {}
-        )
+    response  = HumanFeedback(
+        mode = mode,
+        decision = decision,
+        comment = response.get("comment"),
+        edited_fields = response.get("edited_fields")
     )
-
-    return state
+    updated_state = update_human_feedback(
+        state,
+        response
+    )
+    return updated_state
 

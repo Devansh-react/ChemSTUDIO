@@ -28,18 +28,34 @@ class SupervisorAgent:
         if agent_info is None:
             raise ValueError(f"Agent '{agent_name}' not found in the registry.")
         
-        callable_agent = agent_info["callable"]
-        before_middlware = agent_info.get("middleware", {}).get("before", [])
-        after_middleware = agent_info.get("middleware", {}).get("after", [])
-        
-        for middleware in before_middlware:
-            state = middleware(state)
-            
-        state = callable_agent(state)
-        
-        
-        for middleware in after_middleware:
-            state = middleware(state)
+        middleware_list = agent_info.get("middleware", [])
+
+        # BEFORE
+        for m in middleware_list:
+            if m["position"] == "before":
+                middleware_result = m["callable"](state)
+                state = self.handle_middleware(
+                    state,
+                    m["name"],
+                    middleware_result
+                )
+
+        # AGENT
+        agent = agent_info["callable"]
+        state = agent(state)
+
+        # AFTER
+        for m in middleware_list:
+            if m["position"] == "after":
+                middleware_result = m["callable"](state)
+                state = self.handle_middleware(
+                    state,
+                    m["name"],
+                    middleware_result
+                )
+
+        return state
+    
             
         
         return state
@@ -70,28 +86,21 @@ class SupervisorAgent:
             ]
 
         raise ValueError(f"Invalid intent : {intent}")
-            
-            
-            
-            
-            
-    
-    
+
     def execute_workflow(
         self,
         state: State,
         workflow: list[str]
     ) -> State:
-
+        if state == "failed":
+            return state
+            
         for agent in workflow:
             state = self.invoke(state, agent)
 
         return state
     
-    
-    
-    
-    
+        
     def handle_middleware(
     self,state: State,middleware_name: str,
     middleware_result: dict
@@ -133,6 +142,7 @@ class SupervisorAgent:
 
                 workflow = [
                     "retriever",
+                    "pre_review",
                     "predictor",
                     "verifier",
                     "explainer"
@@ -144,29 +154,6 @@ class SupervisorAgent:
             return self.execute_workflow(state, workflow)
 
         # ---------------------------------------------------
-        # Pre Prediction Human Review
-        # ---------------------------------------------------
-
-        elif middleware_name == "pre_review":
-
-            feedback = self.invoke(
-                state,
-                "human_review"
-            )
-
-            state["human_feedback"] = feedback
-
-            decision = feedback["decision"]
-
-            if decision == "modify":
-                state.update(feedback["edited_fields"])
-
-            elif decision == "reject":
-                state["status"] = "failed"
-
-            return state
-
-        # ---------------------------------------------------
         # Post Prediction Human Review
         # ---------------------------------------------------
 
@@ -175,23 +162,39 @@ class SupervisorAgent:
             if not middleware_result.get("interrupt", False):
                 return state
 
-            feedback = self.invoke(
+            state = self.invoke(
                 state,
                 "human_review"
             )
 
-            state["human_feedback"] = feedback
+            feedback_result = state.get("human_feedback")
+            if not feedback_result:
+                return state
+            
+            decision = feedback_result["decision"]
+            if decision not in ["approve", "modify", "reject", "retry"]:
+                raise ValueError(
+                    f"Invalid decision : {decision}"
+                )
 
-            decision = feedback["decision"]
 
             if decision == "approve":
                 return state
 
             elif decision == "modify":
 
-                state.update(
-                    feedback["edited_fields"]
+                edited_fields = feedback_result.get(
+                    "edited_fields",
+                    {}
                 )
+
+                # Update only existing fields
+                for key, value in edited_fields.items():
+
+                    if key in state:
+                        state[key] = value
+                
+                state["human_feedback"] = None
 
                 return state
 
@@ -202,6 +205,7 @@ class SupervisorAgent:
 
                 workflow = [
                     "retriever",
+                    "pre_review",
                     "predictor",
                     "verifier",
                     "explainer"
@@ -222,3 +226,10 @@ class SupervisorAgent:
     
         return state
 
+def run(self, state: State, intent: str) -> State:
+    state["status"] = "initialized"
+    state["current_agent"] = "supervisor"
+
+    workflow = self.plan(intent)
+
+    return self.execute_workflow(state, workflow)

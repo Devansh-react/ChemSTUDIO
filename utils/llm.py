@@ -24,3 +24,13 @@ if not os.environ.get("OPENAI_API_KEY"):
 def call_llm(prompt: str):
     llm = get_gemini_model()
     return llm.invoke(prompt)
+
+#  using GLA 5.25
+
+# from langchain_openai import ChatOpenAI
+
+# llm = ChatOpenAI(
+#     base_url="https://router.huggingface.co/v1",
+#     api_key=os.environ["HF_TOKEN"],
+#     model="zai-org/GLM-5.2:novita"
+# )
