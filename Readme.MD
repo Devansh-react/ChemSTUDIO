@@ -1,3 +1,9 @@
+
+
+<div align="center">
+  <img src="logo.png" alt="Chem Process Studio logo" width="80%" />
+</div>
+
 # Chem Process Studio
 
 Chem Process Studio is an experimental AI-assisted chemistry workflow for reaction prediction, document-grounded retrieval, and explanation generation. The repository combines chemistry tooling, retrieval-augmented generation, and a supervisor-style orchestration layer around a shared workflow state.
