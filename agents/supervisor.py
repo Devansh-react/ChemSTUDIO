@@ -100,7 +100,6 @@ class SupervisorAgent:
 
         return state
     
-        
     def handle_middleware(
     self,state: State,middleware_name: str,
     middleware_result: dict
@@ -226,7 +225,7 @@ class SupervisorAgent:
     
         return state
 
-def run(self, state: State, intent: str) -> State:
+def run(self, state: State, intent: str) -> State:  
     state["status"] = "initialized"
     state["current_agent"] = "supervisor"
 
