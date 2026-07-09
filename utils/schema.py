@@ -50,9 +50,7 @@ class ReactionState(TypedDict):
     task_type: Literal[
         "prediction",
         "validation",
-        "literature_review",
         "explanation",
-        "report"
     ]
 
 
@@ -81,7 +79,7 @@ class ReactionState(TypedDict):
     uploaded_docs: Optional[List[str]]
 
     # Whether uploaded documents were ingested
-    pdf_ingested: bool
+    pdf_ingested: Optional[bool]
 
     # Indicates if external research was supplied
     external_doc_available: bool

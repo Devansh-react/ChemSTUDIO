@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 
 from pydantic import json
 
+from graph import state
 from utils.schema import ReactionState as State
 from langchain.tools import tool
 from langchain.agents import create_agent
@@ -15,13 +16,38 @@ from utils.agent_registry import AGENT_REGISTRY
 
 
 class SupervisorAgent:
-    def __init__(self,agent_registry,skills,config,model):
+    def __init__(self,agent_registry,skills,config,model,prompt):
         self.agent_registry = agent_registry
         self.skills = skills
         self.config = config
         self.model = model
+        self.Supervisor_prompt = prompt
         
+        self.supervisor_agent = create_agent(
+            model = self.model,
+            tools = [],
+            system_prompt = self.Supervisor_prompt,
+        )
     
+    def classify_intent(self,query:str,state: State):
+        response = self.supervisor_agent.invoke(
+            {"messages": [{f"role": "user", "content": "Classify the intent of the following query: {query} the intent should be one of the following: prediction, validation, explanation. If the query does not match any of these intents, return 'prediction'."}]}
+        )
+        if isinstance(response, dict):
+            response_content = response.get("content", "")
+        else:
+            response_content = response.content if hasattr(response, "content") else str(response)
+            
+        user_intent = response_content.strip().lower()
+        
+        available_intents = state["task_type"]
+        
+        if user_intent not in available_intents:
+            raise ValueError(f"Invalid intent: {user_intent}. Must be one of {available_intents}.")
+        else:
+            state["task_type"] = user_intent # type: ignore
+            return user_intent
+
     def invoke(self,state, agent_name):
         agent_info = self.agent_registry.get(agent_name)
         
@@ -225,10 +251,25 @@ class SupervisorAgent:
     
         return state
 
-def run(self, state: State, intent: str) -> State:  
-    state["status"] = "initialized"
-    state["current_agent"] = "supervisor"
+    def run(self, state: State):  
+        state["status"] = "initialized"
+        state["current_agent"] = "supervisor"
 
-    workflow = self.plan(intent)
+        intent = self.classify_intent(
+            state["user_query"],
+            state
+        )
 
-    return self.execute_workflow(state, workflow)
+        workflow = self.plan(intent)
+
+        state = self.execute_workflow(
+            state,
+            workflow
+        )
+
+        state["status"] = "completed"
+
+        return state
+
+
+

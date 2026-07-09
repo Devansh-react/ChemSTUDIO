@@ -8,7 +8,6 @@ from agents.pre_review import pre_review_agent
 from prompts import (
     Validator_prompt,
     Retriever_prompt,
-    explainer_prompt,
     prediction_prompt,
     verifier_prompt,
 )
@@ -120,7 +119,7 @@ AGENT_REGISTRY = {
     "explainer": {
         "description": "Generates the final explanation and report.",
         "callable": explainer,
-        "prompt": explainer_prompt,
+        "prompt": "",
         "tools": [],
         "middleware": [
             {
@@ -137,6 +136,7 @@ AGENT_REGISTRY = {
         "prompt": "",
         "tools": [],
         "middleware": []
-    }
+    },
+    
 
 }
