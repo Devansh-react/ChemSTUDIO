@@ -19,7 +19,7 @@ langchain-huggingface
 
 # LLM Providers
 langchain-google-genai
-
+langchain-chroma
 langchain-openai
 
 # Chemistry

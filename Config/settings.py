@@ -1,10 +1,10 @@
-from utils.llm import get_gemini_model
+from utils.llm import get_llm_model
 
 # ============================================================
 # Model Configuration
 # ============================================================
 
-MODEL = get_gemini_model()
+MODEL = get_llm_model()
 
 # ============================================================
 # Retry Configuration

@@ -1,159 +1,257 @@
-from typing import List, Dict
+import os
 from datetime import datetime
+from typing import Any, Dict
+
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+class PredictionAPIError(Exception):
+    """Base Prediction API Exception."""
+    pass
+
+
+class PredictionTimeoutError(PredictionAPIError):
+    """Prediction API Timeout."""
+    pass
+
+
+class PredictionConnectionError(PredictionAPIError):
+    """Prediction API Connection Error."""
+    pass
 
 
 class ReactionPredictor:
+    """
+    ChemStudio Reaction Prediction Tool
 
-    def __init__(
-        self,
-        smiles: str,
-        conditions: Dict[str, str],
-        canonical_smiles: str,
-        retrieved_context: List[Dict]
-    ):
-        self.smiles = smiles
-        self.conditions = conditions
-        self.canonical_smiles = canonical_smiles
-        self.retrieved_context = retrieved_context
+    Responsibilities
+    ----------------
+    ✓ Build prediction payload
+    ✓ Call deployed model API
+    ✓ Parse API response
+    ✓ Return standardized prediction object
 
-    # ---------------------------
-    # Prepare inputs
-    # ---------------------------
-    def preprocess(self):
+    Does NOT
+    --------
+    ✗ Validate SMILES
+    ✗ Canonicalize molecules
+    ✗ Verify chemistry
+    ✗ Explain mechanisms
+    ✗ Retrieve literature
+    """
 
-        processed_input = {
-            "smiles":
-                self.canonical_smiles
-                or self.smiles,
+    def __init__(self, request: Dict[str, Any]):
 
-            "conditions":
-                self.conditions,
+        self.request = request
 
-            "retrieved_context":
-                self.retrieved_context
+        self.base_url = os.getenv("MODEL_ENDPOINT")
+
+        if not self.base_url:
+            raise ValueError("MODEL_ENDPOINT not found.")
+
+        self.model_name = os.getenv(
+            "MODEL_NAME",
+            "ChemStudio Reaction Predictor"
+        )
+
+        self.model_version = os.getenv(
+            "MODEL_VERSION",
+            "1.0"
+        )
+
+        self.timeout = int(
+            os.getenv("MODEL_TIMEOUT", "60")
+        )
+
+        self.session = requests.Session()
+
+        self.predict_endpoint = self._initialize_endpoint()
+
+    # --------------------------------------------------
+    # Health Check
+    # --------------------------------------------------
+
+    def _initialize_endpoint(self) -> str:
+
+        health_url = f"{self.base_url}/health"
+
+        try:
+
+            response = self.session.get(
+                health_url,
+                timeout=10
+            )
+
+            response.raise_for_status()
+
+        except requests.Timeout:
+
+            raise PredictionTimeoutError(
+                "Prediction API health check timed out."
+            )
+
+        except requests.RequestException as e:
+
+            raise PredictionConnectionError(
+                f"Unable to connect to Prediction API.\n{e}"
+            )
+
+        return f"{self.base_url}/predict"
+
+    # --------------------------------------------------
+    # Build Payload
+    # --------------------------------------------------
+
+    def build_model_input(self) -> Dict[str, Any]:
+
+        payload = {
+
+            "reactants":
+                self.request["canonical_smiles"],
+
+            "mechanism":
+                self.request["mechanism"]
         }
 
-        return processed_input
+        optional_fields = [
 
-    # ---------------------------
-    # Build model prompt/payload
-    # ---------------------------
-    def build_prompt(
-        self,
-        processed_input: Dict
-    ):
+            "temperature",
+            "pressure",
+            "solvent",
+            "catalyst",
+            "time",
+            "reagents",
+            "metadata"
+        ]
 
-        prompt = f"""
-        Reaction Prediction
+        for field in optional_fields:
 
-        Reactant:
-        {processed_input["smiles"]}
+            value = self.request.get(field)
 
-        Conditions:
-        {processed_input["conditions"]}
+            if value is not None:
+                payload[field] = value
 
-        Context:
-        {processed_input["retrieved_context"]}
-        """
+        return payload
 
-        return prompt
+    # --------------------------------------------------
+    # Call Model
+    # --------------------------------------------------
 
-    # ---------------------------
-    # Model Call
-    # Replace later with
-    # API call / ReactionT5
-    # ---------------------------
     def call_model(
         self,
-        prompt: str
-    ):
+        payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
 
-        return {
-            "prediction":
-                "Predicted Reaction Class",
+        try:
 
-            "confidence":
-                0.85,
+            response = self.session.post(
 
-            "mechanism":
-                "Mechanism"
-        }
+                self.predict_endpoint,
 
-    # ---------------------------
-    # Output Formatting
-    # ---------------------------
+                json=payload,
+
+                timeout=self.timeout
+            )
+
+            response.raise_for_status()
+
+            data = response.json()
+
+            if not data.get("success", False):
+
+                raise PredictionAPIError(
+
+                    data.get(
+                        "error",
+                        "Prediction failed."
+                    )
+                )
+
+            return data
+
+        except requests.Timeout:
+
+            raise PredictionTimeoutError(
+                "Prediction API timed out."
+            )
+
+        except requests.RequestException as e:
+
+            raise PredictionConnectionError(
+                f"Prediction API request failed.\n{e}"
+            )
+
+    # --------------------------------------------------
+    # Postprocess
+    # --------------------------------------------------
+
     def postprocess(
         self,
-        model_output: Dict
-    ):
-
-        prediction = model_output[
-            "prediction"
-        ]
-
-        confidence = model_output[
-            "confidence"
-        ]
-
-        mechanism = model_output[
-            "mechanism"
-        ]
-
-        prediction_metadata = {
-
-            "model_name":
-                "T5-v1.0",
-
-            "model_version":
-                "V1.0",
-
-            "timestamp":
-                datetime.now().isoformat(),
-
-            "confidence_score":
-                confidence,
-
-            "used_external_context":
-                len(
-                    self.retrieved_context
-                ) > 0
-        }
+        model_output: Dict[str, Any]
+    ) -> Dict[str, Any]:
 
         return {
-            "prediction":
-                prediction,
 
-            "confidence":
-                confidence,
+            "success": True,
+
+            "prediction":
+                model_output.get("prediction"),
 
             "mechanism":
-                mechanism,
+                self.request.get("mechanism"),
 
-            "prediction_metadata":
-                prediction_metadata
+            "error": None,
+
+            "prediction_metadata": {
+
+                "model":
+                    self.model_name,
+
+                "version":
+                    self.model_version,
+
+                "timestamp":
+                    datetime.now().isoformat(),
+
+                "used_external_context":
+                    bool(
+                        self.request.get(
+                            "retrieved_context"
+                        )
+                    ),
+
+                "conditions_provided":
+                    bool(
+                        self.request.get(
+                            "conditions"
+                        )
+                    )
+            }
         }
 
-    # ---------------------------
-    # Main Pipeline
-    # ---------------------------
-    def predict(self):
+    # --------------------------------------------------
+    # Main Prediction Pipeline
+    # --------------------------------------------------
 
-        processed_input = (
-            self.preprocess()
+    def predict(self) -> Dict[str, Any]:
+
+        payload = self.build_model_input()
+
+        model_output = self.call_model(
+            payload
         )
 
-        prompt = self.build_prompt(
-            processed_input
+        return self.postprocess(
+            model_output
         )
 
-        model_output = (
-            self.call_model(prompt)
-        )
+    # --------------------------------------------------
+    # Cleanup
+    # --------------------------------------------------
 
-        final_output = (
-            self.postprocess(
-                model_output
-            )
-        )
+    def close(self):
 
-        return final_output
+        self.session.close()

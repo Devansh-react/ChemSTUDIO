@@ -1,36 +1,38 @@
 import os
-import getpass
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
+
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
-def get_gemini_model():
-    return ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            temperature=1.0,  # Gemini 3.0+ defaults to 1.0
-            max_tokens=None,
-            timeout=None,
-            max_retries=2,
-            verbose=True,
+
+def get_llm_model() -> ChatOpenAI:
+    """
+    Returns the configured Mistral model.
+    """
+
+    api_key = os.getenv("MISTRAL_API_KEY")
+    model_name = os.getenv("MISTRAL_MODEL")
+
+    if not api_key:
+        raise ValueError("MISTRAL_API_KEY not found in environment.")
+
+    if not model_name:
+        raise ValueError("MISTRAL_MODEL not found in environment.")
+
+    return ChatOpenAI(
+        model=model_name,
+        api_key=lambda: api_key,
+        temperature=0.7,
+        max_retries=2,
+        timeout=None,
     )
-    
-if not os.environ.get("OPENAI_API_KEY"):
-    os.environ["OPENAI_API_KEY"] = getpass.getpass("")
-    
 
-# Example usage function
+
 def call_llm(prompt: str):
-    llm = get_gemini_model()
+    """
+    Utility function for direct LLM invocation.
+    """
+
+    llm = get_llm_model()
     return llm.invoke(prompt)
-
-#  using GLA 5.25
-
-# from langchain_openai import ChatOpenAI
-
-# llm = ChatOpenAI(
-#     base_url="https://router.huggingface.co/v1",
-#     api_key=os.environ["HF_TOKEN"],
-#     model="zai-org/GLM-5.2:novita"
-# )

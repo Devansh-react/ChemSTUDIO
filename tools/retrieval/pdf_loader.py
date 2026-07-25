@@ -9,6 +9,7 @@ def load_pdf(pdf_path:str):
     except Exception as e:
         print(f"Error loading PDF: {e}")
         return None
+    
         
     
     
