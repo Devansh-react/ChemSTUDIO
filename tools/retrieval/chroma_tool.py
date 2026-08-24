@@ -12,22 +12,29 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 load_dotenv()
 
-model= os.getenv(
-    "Embedding_MODEL"
+model = os.getenv(
+    "Embedding_MODEL",
+    "sentence-transformers/all-MiniLM-L6-v2",
 )
-COLLECTION = os.environ["CHROMA_COLLECTION_NAME"]
+COLLECTION = os.getenv(
+    "CHROMA_COLLECTION_NAME",
+    "chemistry_literature",
+)
 
 embeddings = HuggingFaceEmbeddings(model_name=model)
 
-DIRECTORY = os.getenv("CHROMA_PRESIST_DIRECTORY")
+DIRECTORY = os.getenv(
+    "CHROMA_PERSIST_DIRECTORY",
+    "database/chroma",
+)
 
 db = Chroma(
     collection_name= COLLECTION,
     persist_directory = DIRECTORY,
     embedding_function=embeddings
 )
-def normalise_text(text:str)->str:
-    return "".join(text.split())
+def normalise_text(text: str) -> str:
+    return " ".join(text.split())
 
 # Creates a unique permanent ID for every chunk.
 def build_chunk_id(document:Document):
@@ -76,29 +83,46 @@ def prepare_document(document:Document)->Document:
     )
 
 # Checks whether chunks already exist in Chroma before adding them.
-def _chunks_not_already_indexed(document :Iterable[Document]):
+def _chunks_not_already_indexed(
+    documents: Iterable[Document],
+) -> tuple[list[Document], list[str]]:
     """
     Return only new chunks.
 
     This is the first indexing cache: Chroma itself is used to determine
     whether a stable chunk ID has been indexed already.
     """ 
-    prepared_document = [prp_docs for prp_docs in document]
-    chunk_ids = [build_chunk_id(doc) for doc in document]
-    
-    existing_ids = db.get(ids=chunk_ids,include=[])
-    exisiting_id_set = set(existing_ids.get("ids",[]))
-    
-    new_document:list[Document]=[]
-    new_chunk:list[str] = []
-    
-    for doc, id  in zip(prepared_document,chunk_ids):
-        if id not in exisiting_id_set:
-            new_document.append(doc)
-            new_chunk.append(id)
-        
-    
-    return new_document, new_chunk
+    prepared_documents = [
+        prepare_document(document)
+        for document in documents
+    ]
+
+    chunk_ids = [
+        build_chunk_id(document)
+        for document in prepared_documents
+    ]
+
+    if not chunk_ids:
+        return [], []
+
+    existing = db.get(
+        ids=chunk_ids,
+        include=[],
+    )
+    existing_ids = set(existing.get("ids", []))
+
+    new_documents: list[Document] = []
+    new_ids: list[str] = []
+
+    for document, chunk_id in zip(
+        prepared_documents,
+        chunk_ids,
+    ):
+        if chunk_id not in existing_ids:
+            new_documents.append(document)
+            new_ids.append(chunk_id)
+
+    return new_documents, new_ids
 
 # Checks whether chunks already exist in Chroma before adding them.
 def add_document(documents:list[Document]):

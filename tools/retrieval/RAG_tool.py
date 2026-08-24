@@ -1,6 +1,6 @@
 #  exteral data source to be given to Model  in ordere to predict the chemical reaction 
 
-from tools.retrieval.pdf_loader import load_pdf
+from tools.retrieval.pdf_loader import pdf_loader
 from tools.retrieval.text_splitter import split_documents
 from tools.retrieval.chroma_tool import (
     add_document,
@@ -10,7 +10,7 @@ from tools.retrieval.chroma_tool import (
 
 def ingest_pdf(pdf_path:str):
     try:
-        docs = load_pdf(pdf_path)
+        docs = pdf_loader(pdf_path)
         if not docs:
             return None
         

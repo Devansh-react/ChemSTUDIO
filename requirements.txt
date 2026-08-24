@@ -32,6 +32,7 @@ chromadb
 sentence-transformers
 faiss-cpu
 pypdf
+rank-bm25
 
 # Database
 sqlalchemy

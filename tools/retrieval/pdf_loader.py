@@ -71,3 +71,4 @@ def pdf_loader(pdf_path:str | Path):
         )
 
     return pages
+
