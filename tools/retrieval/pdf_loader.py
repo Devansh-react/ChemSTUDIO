@@ -39,7 +39,7 @@ def pdf_loader(pdf_path:str | Path):
             f"PDF file was not found: {resolve_path}"
         )
     
-    if resolve_path.suffix.lower()!="pdf":
+    if resolve_path.suffix.lower()!=".pdf":
         raise ValueError(
             f"Only PDF files are supported: {resolve_path.name}"
         )
