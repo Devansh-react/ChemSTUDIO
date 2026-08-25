@@ -35,18 +35,18 @@ def build_chemistry_query(state: ReactionState) -> str:
 
     return f"""Reaction literature retrieval
 
-Reactants (canonical SMILES):
-{reactants}
+    Reactants (canonical SMILES):
+    {reactants}
 
-Requested or predicted mechanism:
-{mechanism}
+    Requested or predicted mechanism:
+    {mechanism}
 
-Reaction conditions:
-{formatted_conditions}
+    Reaction conditions:
+    {formatted_conditions}
 
-Find experimental evidence, comparable reactions, compatible conditions,
-mechanistic support, and reported products relevant to this reaction.
-"""
+    Find experimental evidence, comparable reactions, compatible conditions,
+    mechanistic support, and reported products relevant to this reaction.
+    """
 
 
 def _format_context(
