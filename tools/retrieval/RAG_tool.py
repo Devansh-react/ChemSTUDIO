@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
+from copy import deepcopy
+import json
 from typing import Any, Iterable
 
 from tools.retrieval.bm25_tool import (
@@ -24,6 +27,45 @@ DENSE_CANDIDATE_COUNT = 40
 SPARSE_CANDIDATE_COUNT = 40
 RRF_CONSTANT = 60
 RRF_CANDIDATE_COUNT = 30
+RETRIEVAL_CACHE_SIZE = 128
+
+_hybrid_retrieval_cache: OrderedDict[
+    str,
+    list[dict[str, Any]],
+] = OrderedDict()
+
+
+def _build_cache_key(
+    query: str,
+    k: int,
+    dense_k: int,
+    sparse_k: int,
+    metadata_filter: dict[str, Any] | None,
+) -> str:
+    """Create a stable key for an in-process hybrid retrieval cache."""
+    return json.dumps(
+        {
+            "query": " ".join(query.split()),
+            "k": k,
+            "dense_k": dense_k,
+            "sparse_k": sparse_k,
+            "metadata_filter": metadata_filter,
+        },
+        sort_keys=True,
+        default=str,
+    )
+
+
+def _cache_hybrid_results(
+    cache_key: str,
+    candidates: list[dict[str, Any]],
+) -> None:
+    """Store a bounded cache entry and evict the least-recently-used one."""
+    _hybrid_retrieval_cache[cache_key] = deepcopy(candidates)
+    _hybrid_retrieval_cache.move_to_end(cache_key)
+
+    if len(_hybrid_retrieval_cache) > RETRIEVAL_CACHE_SIZE:
+        _hybrid_retrieval_cache.popitem(last=False)
 
 
 def ingest_pdf(pdf_path: str) -> dict[str, Any]:
@@ -63,6 +105,7 @@ def ingest_pdf(pdf_path: str) -> dict[str, Any]:
 
     chroma_result = add_to_chroma(chunks)
     bm25_result = add_to_bm25(chunks)
+    _hybrid_retrieval_cache.clear()
 
     return {
         "document_id": document_id,
@@ -162,6 +205,19 @@ def hybrid_retrieve_context(
     if not query.strip():
         return []
 
+    cache_key = _build_cache_key(
+        query=query,
+        k=k,
+        dense_k=dense_k,
+        sparse_k=sparse_k,
+        metadata_filter=metadata_filter,
+    )
+
+    cached_candidates = _hybrid_retrieval_cache.get(cache_key)
+    if cached_candidates is not None:
+        _hybrid_retrieval_cache.move_to_end(cache_key)
+        return deepcopy(cached_candidates)
+
     dense_candidates = dense_search(
         query=query,
         k=dense_k,
@@ -174,13 +230,17 @@ def hybrid_retrieve_context(
         metadata_filter=metadata_filter,
     )
 
-    return reciprocal_rank_fusion(
+    fused_candidates = reciprocal_rank_fusion(
         ranked_result_sets=[
             ("dense", dense_candidates),
             ("sparse", sparse_candidates),
         ],
         limit=k,
     )
+
+    _cache_hybrid_results(cache_key, fused_candidates)
+
+    return fused_candidates
 
 # [
 #     {

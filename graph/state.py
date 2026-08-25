@@ -16,9 +16,11 @@ def create_prediction_state(
         "conditions": conditions,
 
         "uploaded_docs": uploaded_docs or [],
+        "document_ids": [],
         "pdf_ingested": False,
         "external_doc_available": bool(uploaded_docs),
         "retrieved_context": [],
+        "ingestion_results": [],
 
         "prediction": None,
         "confidence": 0.0,

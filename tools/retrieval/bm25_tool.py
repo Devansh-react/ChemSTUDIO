@@ -38,6 +38,26 @@ def tokenize(text: str) -> list[str]:
     ]
 
 
+def _matches_metadata_filter(
+    metadata: dict[str, Any],
+    metadata_filter: dict[str, Any] | None,
+) -> bool:
+    """Match simple equality filters and Chroma-compatible `$in` filters."""
+    if not metadata_filter:
+        return True
+
+    for key, expected_value in metadata_filter.items():
+        actual_value = metadata.get(key)
+
+        if isinstance(expected_value, dict) and "$in" in expected_value:
+            if actual_value not in expected_value["$in"]:
+                return False
+        elif actual_value != expected_value:
+            return False
+
+    return True
+
+
 class LocalBM25Index:
     """
     A small persistent BM25 index stored as JSON.
@@ -189,14 +209,11 @@ class LocalBM25Index:
             if score <= 0:
                 continue
 
-            if metadata_filter:
-                metadata = record["metadata"]
-
-                if any(
-                    metadata.get(key) != value
-                    for key, value in metadata_filter.items()
-                ):
-                    continue
+            if not _matches_metadata_filter(
+                record["metadata"],
+                metadata_filter,
+            ):
+                continue
 
             candidates.append(
                 {

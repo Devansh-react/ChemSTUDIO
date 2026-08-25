@@ -8,7 +8,9 @@
 
 Chem Process Studio is an experimental AI-assisted chemistry workflow for reaction prediction, document-grounded retrieval, and explanation generation. The repository combines chemistry tooling, retrieval-augmented generation, and a supervisor-style orchestration layer around a shared workflow state.
 
-> Status: the core building blocks are present, but the system is still in an early / partially integrated stage. The chemistry validation, PDF ingestion, vector retrieval, prediction scaffolding, explanation generation, and middleware orchestration are implemented, while the API layer and some full runtime connections are still being completed.
+> Status: the core multi-agent workflow and Retrieval V2 path are implemented. The `/predict` API currently accepts reaction data and optional PDF paths, ingests those PDFs, performs scoped hybrid retrieval, and returns prediction, explanation, verification, metadata, and warnings. The predictor/runtime integrations, production document lifecycle, and UI are still in progress.
+
+Retrieval V2 is documented in [V2_retriever.md](V2_retriever.md), including its ingestion flow, dense plus BM25 search, reciprocal-rank fusion, cross-encoder reranking, traceability, improvements, and limitations.
 
 ---
 
@@ -46,9 +48,9 @@ The current workflow is structured as follows:
    - The resulting canonical SMILES is stored in the workflow state.
 
 4. Retriever agent checks for supporting context
-   - If the workflow state indicates that PDF documents were ingested, the retriever builds a query from the canonical SMILES and reaction conditions.
-   - It searches the Chroma vector store using retrieval tools and returns relevant document chunks as context.
-   - This context is stored in the state as retrieved literature evidence.
+  - If PDFs were successfully ingested, the retriever builds one chemistry-aware query from the canonical SMILES, mechanism, and reaction conditions.
+  - It searches Chroma dense embeddings and the persistent local BM25 index, combines rankings with reciprocal-rank fusion, and reranks the candidates with a cross-encoder.
+  - Retrieval is scoped to the checksum-based document IDs uploaded for the request, and the final context keeps page citations and retrieval diagnostics.
 
 5. Pre-review step can interrupt before prediction
    - A pre-review human review payload can be created before the predictor runs.
@@ -109,7 +111,7 @@ Chem_Procress_studio/
 │   ├── validator.py        # Validates and canonicalizes SMILES.
 │   └── verifier.py         # Checks predictions against context/mechanism rules.
 ├── api/
-│   └── main.py             # FastAPI entrypoint scaffold (currently empty).
+│   └── main.py             # FastAPI application entrypoint and health route.
 ├── database/
 │   ├── chroma/             # Chroma persistence directory.
 │   └── postgress/          # PostgreSQL storage folder placeholder.
@@ -141,10 +143,13 @@ Chem_Procress_studio/
 │   ├── prediction/
 │   │   └── Rxn_predict_tool.py
 │   ├── retrieval/
-│   │   ├── chroma_tool.py
-│   │   ├── pdf_loader.py
-│   │   ├── RAG_tool.py
-│   │   └── text_splitter.py
+│   │   ├── bm25_tool.py      # Persistent sparse retrieval index.
+│   │   ├── chroma_tool.py    # Persistent dense retrieval index.
+│   │   ├── evaluation.py     # Offline retrieval and groundedness metrics.
+│   │   ├── pdf_loader.py     # PDF loading and checksum identity.
+│   │   ├── RAG_tool.py       # Ingestion, hybrid search, and RRF fusion.
+│   │   ├── reranker.py       # Lazy cross-encoder reranking.
+│   │   └── text_splitter.py  # Page-aware chunking.
 │   └── verification/
 │       ├── Context_verifier.py
 │       └── mechaism_verifier.py
@@ -202,8 +207,8 @@ Chem_Procress_studio/
   - Currently uses a placeholder model call and formatting flow.
 
 - Retrieval tools
-  - Load PDFs, split them into chunks, and index them in Chroma.
-  - Retrieve relevant context using similarity or MMR search.
+  - Load PDFs, split them into page-aware chunks, and index them in Chroma and BM25.
+  - Retrieve relevant context with dense search, sparse search, RRF fusion, and cross-encoder reranking.
 
 - Verification tools
   - Score the quality of retrieved context and chemistry mechanism alignment.
@@ -243,16 +248,18 @@ This state is the backbone of the system and is passed from one agent to the nex
 
 ---
 
-## Retrieval and document ingestion flow
+## Retrieval V2 and document ingestion flow
 
 The retrieval pipeline is built around these steps:
 
-1. A PDF is loaded through the PDF loader.
-2. The PDF content is split into smaller chunks.
-3. The chunks are added to the Chroma vector database.
-4. A query is built from the current reaction input.
-5. The retriever searches the vector store using similarity or MMR retrieval.
-6. The top matching document chunks are attached to the workflow state.
+1. A PDF is loaded, validated, and assigned a SHA-256 document identity.
+2. Pages are split into 1,200-character chunks with 150-character overlap while preserving page metadata.
+3. Stable chunk IDs prevent duplicate records in both Chroma and BM25.
+4. Chunks are indexed in Chroma for semantic search and a local JSON-backed BM25 index for exact chemistry terms.
+5. A query is built from the canonical reaction, mechanism, and sorted conditions.
+6. Dense and sparse candidates are fused with reciprocal-rank fusion.
+7. Up to 30 fused candidates are reranked with a lazy cross-encoder; up to 8 cited chunks are placed in workflow state.
+8. If the reranker is unavailable, the top fused candidates are returned with a warning.
 
 This gives the predictor and verifier access to literature-based context.
 
@@ -274,9 +281,11 @@ This gives the predictor and verifier access to literature-based context.
 | Explainer agent | Implemented |
 | Supervisor orchestration | Implemented as a central planner/executor |
 | Human review flow | Implemented as a review interrupt pattern |
-| API server | Still scaffolded |
+| API server | `/predict` endpoint implemented; upload and operational endpoints remain |
 | Persistent database integration | Still in progress |
 | Full end-to-end UI | Not implemented |
+| Retrieval V2 | Implemented: Chroma + BM25 + RRF + cross-encoder fallback |
+| Retrieval evaluation | Metric helpers implemented; benchmark dataset/results pending |
 
 ---
 
@@ -313,17 +322,20 @@ GOOGLE_API_KEY=your_key_here
 ## Important implementation notes
 
 - The current prediction pipeline is structurally complete but still uses a placeholder prediction implementation inside the reaction predictor tool.
-- The retrieval flow depends on PDFs already being ingested into the Chroma database.
+- The retrieval flow ingests the PDF paths supplied in `pdf_context` before running the supervisor; the current API does not yet expose a multipart document-upload endpoint.
+- Retrieval V2 also maintains `database/bm25_index.json`; this local JSON index is appropriate for the current development setup, not yet for multi-process production workloads.
+- The cross-encoder reranker is lazy-loaded and falls back to RRF results if its model is unavailable.
 - The supervisor is the main integration point for workflow control, retries, and human review.
-- The API entrypoint is currently just a scaffold and needs further endpoint implementation before it can run as a usable application.
+- The API is usable for the current prediction workflow, but authentication, tenant isolation, durable document lifecycle, and production observability are still needed.
 - The project is a strong foundation for a research-oriented chemistry assistant, but it still needs more integration work to become a complete application.
 
 ---
 
 ## Recommended next steps
 
-- Implement the FastAPI endpoints for prediction and document ingestion.
+- Add multipart document upload and document-management endpoints.
 - Replace the placeholder prediction logic with a real model or external service.
 - Expand the verifier logic and make the confidence thresholds more domain-specific.
+- Build a labeled retrieval benchmark and track recall@k, reciprocal rank, context relevance, and groundedness across retrieval variants.
 - Connect the workflow to persistent storage and user history.
 - Add a frontend or interactive interface for end-to-end usage.

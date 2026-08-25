@@ -34,7 +34,7 @@ def pdf_loader(pdf_path:str | Path):
     """
     resolve_path = Path(pdf_path).expanduser().resolve()
     
-    if not resolve_path:
+    if not resolve_path.exists():
         raise FileNotFoundError(
             f"PDF file was not found: {resolve_path}"
         )
@@ -46,7 +46,7 @@ def pdf_loader(pdf_path:str | Path):
     
     document_checksum = calculate_file_checksum(resolve_path)
     
-    loader = PyPDFLoader(resolve_path)
+    loader = PyPDFLoader(str(resolve_path))
     pages = loader.load()
     
     if not  pages:

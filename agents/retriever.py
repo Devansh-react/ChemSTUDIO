@@ -106,9 +106,17 @@ def retriever_agent(state: ReactionState) -> dict[str, Any]:
 
     query = build_chemistry_query(state)
 
+    document_ids = state.get("document_ids", [])
+    metadata_filter = (
+        {"document_id": {"$in": document_ids}}
+        if document_ids
+        else None
+    )
+
     rrf_candidates = hybrid_retrieve_context(
         query=query,
         k=RRF_CANDIDATE_COUNT,
+        metadata_filter=metadata_filter,
     )
 
     if not rrf_candidates:

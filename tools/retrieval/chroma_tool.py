@@ -52,9 +52,9 @@ def build_chunk_id(document:Document):
         metadata.get("source") or metadata.get("pdf_name") or " unkown_source"
     )
     
-    page = str(metadata.get("page") or "unkonwn_page")
+    page = str(metadata.get("page", "unknown_page"))
     content = normalise_text(document.page_content)
-    chunk_index = str(metadata.get("chunk_index")or "unkown_chunk")
+    chunk_index = str(metadata.get("chunk_index", "unknown_chunk"))
     
     raw_key = f"{source}|{page}|{content}|{chunk_index}"
     
@@ -135,9 +135,9 @@ def add_document(documents:list[Document]):
         )
     
     return {
-        "recieved":len(documents),
-        "index":len(new_docs),
-        "skipped":len(documents)-len(new_docs)
+        "received": len(documents),
+        "indexed": len(new_docs),
+        "skipped": len(documents) - len(new_docs),
     }
 
 # Performs semantic/vector search.

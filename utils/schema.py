@@ -68,8 +68,7 @@ class ReactionState(TypedDict):
 
     # User supplied reaction conditions
     conditions: Dict[str, str]
-
-
+    
     # ------------------------------------------------------
     # Document Retrieval
     # Used by Retriever Agent
@@ -78,13 +77,22 @@ class ReactionState(TypedDict):
     # Uploaded research documents
     uploaded_docs: Optional[List[str]]
 
-    # Whether uploaded documents were ingested
+    # Whether one or more uploaded PDFs were successfully ingested
     pdf_ingested: Optional[bool]
+
+    # Stable checksum-based IDs of successfully ingested PDFs.
+    # Used later to restrict retrieval to the current user's documents.
+    document_ids: List[str]
+
+    # Detailed result for every PDF ingestion attempt.
+    # Includes chunks created, Chroma/BM25 counts, or an error message.
+    ingestion_results: List[Dict[str, Any]]
 
     # Indicates if external research was supplied
     external_doc_available: bool
 
-    # Retrieved literature chunks
+    # Retrieved literature chunks, including text, citations,
+    # RRF ranking, and cross-encoder reranker information.
     retrieved_context: List[Dict[str, Any]]
 
 
