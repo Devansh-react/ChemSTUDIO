@@ -4,7 +4,8 @@
   <img src="logo.png" alt="Chem Process Studio logo" width="80%" />
 </div>
 
-# ChenSTUDIO V2 (Building a chemistry workflow with AI-assisted reaction prediction, retrieval, and explanation)
+# ChenSTUDIO V2
+### (Building a chemistry workflow with AI-assisted reaction prediction, retrieval, and explanation)
  
 Chem Process Studio is an experimental AI-assisted chemistry workflow for reaction prediction, document-grounded retrieval, and explanation generation. The repository combines chemistry tooling, retrieval-augmented generation, and a supervisor-style orchestration layer around a shared workflow state.
 
