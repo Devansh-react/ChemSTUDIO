@@ -42,6 +42,7 @@ async def predict(request:PredictionRequest):
             "ingestion_results",
             [],
         ),
+        "retrieved_context": result.get("retrieved_context", []),
     }
     return PredictionResponse(
         success=result["status"] == "completed",

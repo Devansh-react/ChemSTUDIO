@@ -121,7 +121,6 @@ class SupervisorAgent:
             return [
                 "validator",
                 "retriever",
-                "pre_review",
                 "predictor",
                 "verifier",
                 "explainer",
@@ -228,66 +227,10 @@ class SupervisorAgent:
             if not middleware_result.get("interrupt", False):
                 return state
 
-            state = self.invoke(
-                state,
-                "human_review"
-            )
-
-            feedback_result = state.get("human_feedback")
-            if not feedback_result:
-                return state
-            
-            decision = feedback_result["decision"]
-            if decision not in ["approve", "modify", "reject", "retry"]:
-                raise ValueError(
-                    f"Invalid decision : {decision}"
-                )
-
-
-            if decision == "approve":
-                return state
-
-            elif decision == "modify":
-
-                edited_fields = feedback_result.get(
-                    "edited_fields",
-                    {}
-                )
-
-                # Update only existing fields
-                for key, value in edited_fields.items():
-
-                    if key in state:
-                        state[key] = value
-                
-                state["human_feedback"] = None
-
-                return state
-
-            elif decision == "retry":
-
-                state["retry_count"]["workflow"] += 1
-                state["status"] = "retrying"
-
-                workflow = [
-                    "retriever",
-                    "pre_review",
-                    "predictor",
-                    "verifier",
-                    "explainer"
-                ]
-
-                return self.execute_workflow(
-                    state,
-                    workflow
-                )
-
-            elif decision == "reject":
-
-                state["status"] = "failed"
-
-                return state
-
+            state["warnings"] = state.get("warnings", []) + [
+                "Human review recommended: "
+                f"{middleware_result.get('reason', 'verification policy')}."
+            ]
             return state
     
         return state

@@ -135,8 +135,8 @@ ingestion clears the in-process hybrid query cache.
 
 **Chroma dense index**
 
-- Uses `HuggingFaceEmbeddings`.
-- Default model: `sentence-transformers/all-MiniLM-L6-v2`.
+- Uses lightweight CPU-based `FastEmbedEmbeddings`.
+- Default model: `BAAI/bge-small-en-v1.5` (free and runs locally).
 - Persists to `database/chroma`.
 - Stores scalar metadata suitable for Chroma filtering.
 - Returns semantic candidates with vector distance values.
@@ -358,8 +358,8 @@ and context alignment before the result is presented.
 
 | Environment variable | Default | Purpose |
 | --- | --- | --- |
-| `Embedding_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Chroma embedding model |
-| `CHROMA_COLLECTION_NAME` | `chemistry_literature` | Chroma collection |
+| `Embedding_MODEL` | `BAAI/bge-small-en-v1.5` | Chroma embedding model |
+| `CHROMA_COLLECTION_NAME` | `chemistry_literature_bge_small` | Chroma collection |
 | `CHROMA_PERSIST_DIRECTORY` | `database/chroma` | Chroma persistence path |
 | `BM25_INDEX_PATH` | `database/bm25_index.json` | BM25 JSON index path |
 | `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder model |

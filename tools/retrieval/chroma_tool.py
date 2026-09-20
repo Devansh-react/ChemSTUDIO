@@ -8,20 +8,20 @@ from typing import Any, Iterable
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import FastEmbedEmbeddings
 
 load_dotenv()
 
 model = os.getenv(
     "Embedding_MODEL",
-    "sentence-transformers/all-MiniLM-L6-v2",
+    "BAAI/bge-small-en-v1.5",
 )
 COLLECTION = os.getenv(
     "CHROMA_COLLECTION_NAME",
-    "chemistry_literature",
+    "chemistry_literature_bge_small",
 )
 
-embeddings = HuggingFaceEmbeddings(model_name=model)
+embeddings = FastEmbedEmbeddings(model_name=model)
 
 DIRECTORY = os.getenv(
     "CHROMA_PERSIST_DIRECTORY",

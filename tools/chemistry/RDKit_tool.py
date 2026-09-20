@@ -35,9 +35,13 @@ def validate_smiles(smiles:str):
         result["canonical_smiles"] = canonical_smiles
     
     # MolStandardize Validation
-    validation_errors = rdMolStandardize.ValidateSmiles(smiles)
-    if validation_errors:
-        result["errors"].extend(validation_errors)
+    validation_messages = rdMolStandardize.ValidateSmiles(smiles)
+    if validation_messages:
+        for msg in validation_messages:
+            if msg.startswith("ERROR"):
+                result["errors"].append(msg)
+            else:
+                result["warning"].append(msg)
         
     
     # Atom Count Check 

@@ -12,11 +12,11 @@ pydantic-settings
 # LangChain & LangGraph
 langchain
 langchain-core
+langchain-text-splitters
 langchain-community
 langgraph
 langsmith
 deepagents
-langchain-huggingface
 
 # LLM Providers
 langchain-google-genai
@@ -30,6 +30,9 @@ pubchempy
 
 # RAG
 chromadb
+# FastEmbed downloads this free model on first use.
+# Embedding model: BAAI/bge-small-en-v1.5
+fastembed
 sentence-transformers
 faiss-cpu
 pypdf

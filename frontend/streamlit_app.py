@@ -57,7 +57,7 @@ def predict(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def render_retrieved_context(metadata: dict[str, Any]) -> None:
-    """Show ingestion information returned by the FastAPI response."""
+    """Show RAG ingestion results and retrieved evidence."""
     ingestion_results = metadata.get("ingestion_results", [])
 
     if not ingestion_results:
@@ -82,6 +82,23 @@ def render_retrieved_context(metadata: dict[str, Any]) -> None:
                 )
             else:
                 st.error(result.get("error", "Unknown ingestion error"))
+
+    retrieved_context = metadata.get("retrieved_context", [])
+    if not retrieved_context:
+        return
+
+    st.subheader("Retrieved literature evidence")
+
+    for item in retrieved_context:
+        source = item.get("source") or "Unknown source"
+        page = item.get("page")
+        citation = f"{source}, page {page}" if page is not None else source
+
+        with st.expander(citation, expanded=False):
+            st.write(item.get("content", ""))
+            st.caption(
+                f"Retrieval details: {item.get('retrieval', {})}"
+            )
 
 
 def main() -> None:

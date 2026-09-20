@@ -8,24 +8,27 @@ load_dotenv()
 
 def get_llm_model() -> ChatOpenAI:
     """
-    Returns the configured Mistral model.
+    Returns the configured Nemotron 3 Ultra model.
     """
 
-    api_key = os.getenv("MISTRAL_API_KEY")
-    model_name = os.getenv("MISTRAL_MODEL")
+    api_key = os.getenv("NEMOTRON_API_KEY")
+    model_name = os.getenv("NEMOTRON_MODEL", "nvidia/nemotron-3-ultra-550b-a55b")
+    base_url = os.getenv("NEMOTRON_BASE_URL", "https://openrouter.ai/api/v1")
 
     if not api_key:
-        raise ValueError("MISTRAL_API_KEY not found in environment.")
+        raise ValueError("NEMOTRON_API_KEY not found in environment.")
 
     if not model_name:
-        raise ValueError("MISTRAL_MODEL not found in environment.")
+        raise ValueError("NEMOTRON_MODEL not found in environment.")
 
     return ChatOpenAI(
         model=model_name,
         api_key=lambda: api_key,
+        base_url=base_url,
         temperature=0.7,
         max_retries=2,
-        timeout=None,
+        timeout=60,
+        max_tokens=2048,
     )
 
 

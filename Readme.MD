@@ -313,7 +313,7 @@ pip install -r requirements.txt
 Create a `.env` file in the project root with values such as:
 
 ```env
-Embedding_MODEL=sentence-transformers/all-MiniLM-L6-v2
+Embedding_MODEL=BAAI/bge-small-en-v1.5
 OPENAI_API_KEY=your_key_here
 GOOGLE_API_KEY=your_key_here
 ```
