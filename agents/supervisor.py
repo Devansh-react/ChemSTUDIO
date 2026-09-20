@@ -152,6 +152,19 @@ class SupervisorAgent:
         for agent in workflow:
             state = self.invoke(state, agent)
 
+            if agent == "validator" and not state.get(
+                "validation",
+                False,
+            ):
+                state["status"] = "failed"
+                state["warnings"] = state.get("warnings", []) + [
+                    "Input validation failed; prediction was skipped."
+                ]
+                return state
+
+            if state.get("status") == "failed":
+                return state
+
         return state
     
     def handle_middleware(
@@ -284,10 +297,17 @@ class SupervisorAgent:
             state["status"] = "initialized"
             state["current_agent"] = "supervisor"
 
-            intent = self.classify_intent(
-                state["user_query"],
-                state
-            )
+            intent = state.get("task_type")
+
+            if intent not in {
+                "prediction",
+                "validation",
+                "explanation",
+            }:
+                intent = self.classify_intent(
+                    state["user_query"],
+                    state
+                )
 
             workflow = self.plan(intent)
 
@@ -296,10 +316,13 @@ class SupervisorAgent:
                 workflow
             )
 
-            state["status"] = "completed"
+            if state.get("status") != "failed":
+                state["status"] = "completed"
 
             return state
-        except Exception as e:
+        except Exception as error:
             state["status"] = "failed"
-            # state["warnings"].append(str(e))
+            state["warnings"] = state.get("warnings", []) + [
+                f"Workflow failed: {error}"
+            ]
             return state

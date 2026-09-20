@@ -1,27 +1,38 @@
-from utils.schema import ReactionState as State
 from tools.prediction.Rxn_predict_tool import ReactionPredictor
+from utils.schema import ReactionState as State
 
-def predict_reaction(state:State):
-    smiles = state.get("smiles")
+def predict_reaction(state: State):
+    """Build the deployed-model request from the shared workflow state."""
     canonical_smiles = state.get("canonical_smiles") or ""
-    conditions = state.get("conditions",{})
-    retrieved_context = state.get("retrieved_context", state.get("retrived_context", []))
-    if not retrieved_context:
-        retrieved_context = []
-        
-    
-    # this is the business logic of predictig the reaction calssify the mechnism and cal the confidence4
-    
-    predictor = ReactionPredictor(smiles = smiles, conditions = conditions, canonical_smiles = canonical_smiles, retrieved_context = retrieved_context)
-    
-    prediction_result = predictor.predict()
-    
+    mechanism = state.get("mechanism") or ""
+
+    if not canonical_smiles:
+        raise ValueError(
+            "Prediction requires a validated canonical SMILES string."
+        )
+
+    if not mechanism:
+        raise ValueError(
+            "Prediction requires a reaction mechanism."
+        )
+
+    model_request = {
+        "canonical_smiles": canonical_smiles,
+        "mechanism": mechanism,
+        "conditions": state.get("conditions", {}),
+        "retrieved_context": state.get("retrieved_context", []),
+    }
+
+    predictor = ReactionPredictor(model_request)
+
+    try:
+        prediction_result = predictor.predict()
+    finally:
+        predictor.close()
+
     return {
         "prediction": prediction_result.get("prediction"),
         "confidence": prediction_result.get("confidence") or 0.0,
         "mechanism": prediction_result.get("mechanism"),
-        "prediction_metadata": prediction_result.get("prediction_metadata")
+        "prediction_metadata": prediction_result.get("prediction_metadata"),
     }
-    
-    
-    

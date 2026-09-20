@@ -13,8 +13,8 @@ class PredictionRequest(BaseModel):
         description="Reaction SMILES"
     )
 
-    mechanism: Optional[str] = Field(
-        default=None,
+    mechanism: str = Field(
+        ...,
         description="Reaction mechanism (SN1, SN2, Oxidation...)"
     )
 

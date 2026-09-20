@@ -55,5 +55,5 @@ def explainer_agent(state:State):
     response = call_llm(prompt)
     
     return {
-        "explaination_report": response.content if hasattr(response, "content") else str(response)
+        "explanation_report": response.content if hasattr(response, "content") else str(response)
     }

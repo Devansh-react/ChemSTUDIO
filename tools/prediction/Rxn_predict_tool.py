@@ -4,6 +4,8 @@ from typing import Any, Dict
 
 import requests
 from dotenv import load_dotenv
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 load_dotenv()
 
@@ -47,7 +49,7 @@ class ReactionPredictor:
 
         self.request = request
 
-        self.base_url = os.getenv("MODEL_ENDPOINT")
+        self.base_url = os.getenv("MODEL_ENDPOINT", "").rstrip("/")
 
         if not self.base_url:
             raise ValueError("MODEL_ENDPOINT not found.")
@@ -67,40 +69,41 @@ class ReactionPredictor:
         )
 
         self.session = requests.Session()
+        retry_policy = Retry(
+            total=3,
+            connect=3,
+            read=3,
+            backoff_factor=0.5,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=frozenset({"GET", "POST"}),
+        )
+        adapter = HTTPAdapter(max_retries=retry_policy)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
 
-        self.predict_endpoint = self._initialize_endpoint()
+        # The deployed service exposes inference at /predict. A health route
+        # is optional and must not prevent valid prediction requests.
+        self.predict_endpoint = f"{self.base_url}/predict"
 
     # --------------------------------------------------
     # Health Check
     # --------------------------------------------------
 
-    def _initialize_endpoint(self) -> str:
+    def check_health(self) -> bool:
+        """Return whether an optional `/health` endpoint is available."""
 
         health_url = f"{self.base_url}/health"
 
         try:
-
             response = self.session.get(
                 health_url,
                 timeout=10
             )
+            return response.ok
 
-            response.raise_for_status()
-
-        except requests.Timeout:
-
-            raise PredictionTimeoutError(
-                "Prediction API health check timed out."
-            )
-
-        except requests.RequestException as e:
-
-            raise PredictionConnectionError(
-                f"Unable to connect to Prediction API.\n{e}"
-            )
-
-        return f"{self.base_url}/predict"
-
+        except requests.RequestException:
+            return False
+ 
     # --------------------------------------------------
     # Build Payload
     # --------------------------------------------------
@@ -108,13 +111,11 @@ class ReactionPredictor:
     def build_model_input(self) -> Dict[str, Any]:
 
         payload = {
-
-            "reactants":
-                self.request["canonical_smiles"],
-
-            "mechanism":
-                self.request["mechanism"]
+            "reactants": self.request["canonical_smiles"],
+            "mechanism": self.request["mechanism"],
         }
+
+        conditions = self.request.get("conditions", {})
 
         optional_fields = [
 
@@ -129,7 +130,7 @@ class ReactionPredictor:
 
         for field in optional_fields:
 
-            value = self.request.get(field)
+            value = self.request.get(field, conditions.get(field))
 
             if value is not None:
                 payload[field] = value
@@ -228,7 +229,7 @@ class ReactionPredictor:
                         self.request.get(
                             "conditions"
                         )
-                    )
+                    ),
             }
         }
 
