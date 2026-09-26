@@ -111,7 +111,7 @@ class ReactionPredictor:
     def build_model_input(self) -> Dict[str, Any]:
 
         payload = {
-            "reactants": self.request["canonical_smiles"],
+            "reactants": self.request.get("original_smiles", self.request["canonical_smiles"]),
             "mechanism": self.request["mechanism"],
         }
 

@@ -94,7 +94,7 @@ def retriever_agent(state: ReactionState) -> dict[str, Any]:
     pdf_ingested = bool(
         state.get(
             "pdf_ingested",
-            state.get("pdf_injested", False),
+            False,
         )
     )
 

@@ -1,7 +1,7 @@
 from utils.llm import call_llm
 
 
-def validate_mechanism(reactant:str, condition:dict, mechanism:str,ouptut:str, context: list):
+def validate_mechanism(reactant: str, condition: dict, mechanism: str, ouptut: str, context: list):
     prompt = f"""
     You are an expert organic chemist.
 
@@ -38,11 +38,14 @@ def validate_mechanism(reactant:str, condition:dict, mechanism:str,ouptut:str, c
     0.48
     0.05
     """
-    response  = call_llm(prompt)
-    score = response.content if hasattr(response, 'content') else str(response)
-    
-    if isinstance(score,str):
-        return float(score)
-    else:
-        return 0.0
+    try:
+        response = call_llm(prompt)
+        score = response.content if hasattr(response, 'content') else str(response)
+
+        if isinstance(score, str):
+            return float(score.strip())
+        else:
+            return 0.5
+    except Exception:
+        return 0.5
     

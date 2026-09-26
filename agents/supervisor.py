@@ -6,8 +6,6 @@ TaskType = Literal[
     "explanation",
 ]
 from langchain.agents import create_agent
-from utils.llm import get_llm_model
-from langchain.agents import create_agent
 from prompts.supervisor_prompt import SUPERVISOR_PROMPT
 from Config.settings import MODEL   
 from utils.agent_registry import AGENT_REGISTRY
@@ -39,17 +37,11 @@ class SupervisorAgent:
                 "messages": [
                     {
                         "role": "user",
-                        "content": f"""
-        Classify the following query.
+                        "content": f"""Classify the following query into exactly one word: prediction, validation, or explanation.
 
-        Query:
-        {query}
+Query: {query}
 
-        Return only one word:
-        prediction
-        validation
-        explanation
-        """
+Return only one word."""
                     }
                 ]
             }
@@ -61,7 +53,7 @@ class SupervisorAgent:
         else:
             response_content = str(response)
             
-        user_intent = response_content.strip().lower()
+        user_intent = response_content.strip().lower().split()[0] if response_content.strip() else ""
         
         available_intents = [
             "prediction",
@@ -70,7 +62,7 @@ class SupervisorAgent:
         ]
 
         if user_intent not in available_intents:
-            raise ValueError(...)
+            user_intent = "prediction"
 
         state["task_type"] = cast(TaskType, user_intent)
         return user_intent

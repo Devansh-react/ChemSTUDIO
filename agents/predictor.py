@@ -4,6 +4,7 @@ from utils.schema import ReactionState as State
 def predict_reaction(state: State):
     """Build the deployed-model request from the shared workflow state."""
     canonical_smiles = state.get("canonical_smiles") or ""
+    original_smiles = state.get("smiles") or ""
     mechanism = state.get("mechanism") or ""
 
     if not canonical_smiles:
@@ -18,6 +19,7 @@ def predict_reaction(state: State):
 
     model_request = {
         "canonical_smiles": canonical_smiles,
+        "original_smiles": original_smiles,
         "mechanism": mechanism,
         "conditions": state.get("conditions", {}),
         "retrieved_context": state.get("retrieved_context", []),

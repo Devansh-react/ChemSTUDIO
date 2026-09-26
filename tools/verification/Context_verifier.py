@@ -1,7 +1,7 @@
 from utils.llm import call_llm
 from typing import List, Dict
 
-def verify_prediction_with_context(prediction_mechanism: str,retrived_context: List[Dict],confidence:float=0.0):
+def verify_prediction_with_context(prediction_mechanism: str, retrived_context: List[Dict], confidence: float = 0.0):
     if not prediction_mechanism or not retrived_context:
         return 0.0
     prompt = f"""
@@ -41,14 +41,16 @@ def verify_prediction_with_context(prediction_mechanism: str,retrived_context: L
     0.53
     0.12
     """
-    response = call_llm(prompt)
-    score = response.content if hasattr(response, 'content') else str(response)
-    
-    
-    if isinstance(score, str):
-        try:
-            score = float(score)
-        except ValueError:
-            score = 0.0
-    
-    return score
+    try:
+        response = call_llm(prompt)
+        score = response.content if hasattr(response, 'content') else str(response)
+
+        if isinstance(score, str):
+            try:
+                score = float(score.strip())
+            except ValueError:
+                score = 0.0
+
+        return score
+    except Exception:
+        return 0.0

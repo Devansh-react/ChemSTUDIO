@@ -28,7 +28,7 @@ def get_llm_model() -> ChatOpenAI:
         temperature=0.7,
         max_retries=2,
         timeout=60,
-        max_tokens=2048,
+        max_tokens=512,
     )
 
 

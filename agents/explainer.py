@@ -2,14 +2,14 @@ from utils.schema import ReactionState as State
 from utils.llm import call_llm
 
 
-def explainer_agent(state:State):
-    prediction = state.get("prediction","")
-    mechnanism = state.get("mechanism","")
-    prediction_metadata = state.get("prediction_metadata",{})
-    validation_results = state.get("validation_results",{})
-    validation_scores = state.get("validation_scores",{})
-    warnings = state.get("warnings",[])
-    
+def explainer_agent(state: State):
+    prediction = state.get("prediction", "")
+    mechnanism = state.get("mechanism", "")
+    prediction_metadata = state.get("prediction_metadata", {})
+    validation_results = state.get("validation_results", {})
+    validation_scores = state.get("validation_scores", {})
+    warnings = state.get("warnings", [])
+
     prompt = f"""
     You are an Explanation Agent.
 
@@ -52,8 +52,20 @@ def explainer_agent(state:State):
 
     The report must only rephrase and structure the information above for readability.
     """
-    response = call_llm(prompt)
-    
+    try:
+        response = call_llm(prompt)
+        report = response.content if hasattr(response, "content") else str(response)
+    except Exception:
+        report = f"""
+Prediction Summary: {prediction or 'Not Available'}
+Mechanism Summary: {mechnanism or 'Not Available'}
+Prediction Metadata: {prediction_metadata or 'Not Available'}
+Validation Results: {validation_results or 'Not Available'}
+Validation Scores: {validation_scores or 'Not Available'}
+Warnings: {warnings or 'Not Available'}
+Final System Status: {'Completed with LLM unavailable' if prediction else 'Failed'}
+"""
+
     return {
-        "explanation_report": response.content if hasattr(response, "content") else str(response)
+        "explanation_report": report
     }
