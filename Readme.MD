@@ -10,6 +10,8 @@
 Chem Process Studio is an experimental AI-assisted chemistry workflow for reaction prediction, document-grounded retrieval, and explanation generation. The repository combines chemistry tooling, retrieval-augmented generation, and a supervisor-style orchestration layer around a shared workflow state.
 
 > Status: the core multi-agent workflow and Retrieval V2 path are implemented. The `/predict` API currently accepts reaction data and optional PDF paths, ingests those PDFs, performs scoped hybrid retrieval, and returns prediction, explanation, verification, metadata, and warnings. The predictor/runtime integrations, production document lifecycle, and UI are still in progress.
+>
+> **Recent Fixes (Sept 2026):** Canonical SMILES reactant order bug fixed (preserves original order for prediction), LLM error handling with fallbacks, retry middleware refinements, intent classification parsing improved. See [UPGRADES_AND_ARCHITECTURE.md](UPGRADES_AND_ARCHITECTURE.md) for details.
 
 Retrieval V2 is documented in [V2_retriever.md](V2_retriever.md), including its ingestion flow, dense plus BM25 search, reciprocal-rank fusion, cross-encoder reranking, traceability, improvements, and limitations.
 
@@ -277,16 +279,17 @@ This gives the predictor and verifier access to literature-based context.
 | Chroma-based retrieval | Implemented |
 | Validation agent | Implemented |
 | Retriever agent | Implemented |
-| Predictor agent | Implemented as a structured workflow with placeholder prediction logic |
-| Verifier agent | Implemented with scoring-based validation |
-| Explainer agent | Implemented |
+| Predictor agent | Implemented with Modal API integration (original reactant order preserved) |
+| Verifier agent | Implemented with scoring-based validation + LLM fallbacks |
+| Explainer agent | Implemented with fallback template |
 | Supervisor orchestration | Implemented as a central planner/executor |
 | Human review flow | Implemented as a review interrupt pattern |
 | API server | `/predict` endpoint implemented; upload and operational endpoints remain |
 | Persistent database integration | Still in progress |
-| Full end-to-end UI | Not implemented |
+| Full end-to-end UI | Streamlit test UI implemented |
 | Retrieval V2 | Implemented: Chroma + BM25 + RRF + cross-encoder fallback |
 | Retrieval evaluation | Metric helpers implemented; benchmark dataset/results pending |
+| LLM error handling | Fallback scores/reports for credit-limited scenarios |
 
 ---
 
@@ -322,10 +325,12 @@ GOOGLE_API_KEY=your_key_here
 
 ## Important implementation notes
 
-- The current prediction pipeline is structurally complete but still uses a placeholder prediction implementation inside the reaction predictor tool.
+- The prediction pipeline integrates with a deployed Modal API (`MODEL_ENDPOINT`); the tool encapsulates payload building, retries, and postprocessing.
+- **Fixed:** Canonical SMILES reorders reactants alphabetically; the predictor now sends `original_smiles` (user input order) to the model while keeping canonical SMILES for validation.
 - The retrieval flow ingests the PDF paths supplied in `pdf_context` before running the supervisor; the current API does not yet expose a multipart document-upload endpoint.
 - Retrieval V2 also maintains `database/bm25_index.json`; this local JSON index is appropriate for the current development setup, not yet for multi-process production workloads.
 - The cross-encoder reranker is lazy-loaded and falls back to RRF results if its model is unavailable.
+- **Added:** LLM verification/explanation calls have graceful fallbacks (neutral scores, template reports) when Nemotron API credits are exhausted (402 errors).
 - The supervisor is the main integration point for workflow control, retries, and human review.
 - The API is usable for the current prediction workflow, but authentication, tenant isolation, durable document lifecycle, and production observability are still needed.
 - The project is a strong foundation for a research-oriented chemistry assistant, but it still needs more integration work to become a complete application.
@@ -334,9 +339,12 @@ GOOGLE_API_KEY=your_key_here
 
 ## Recommended next steps
 
-- Add multipart document upload and document-management endpoints.
-- Replace the placeholder prediction logic with a real model or external service.
+- Add multipart document upload and document-management endpoints (`/upload`, `/documents`).
+- Replace the Modal prediction model with a higher-quality reaction prediction model or service.
 - Expand the verifier logic and make the confidence thresholds more domain-specific.
 - Build a labeled retrieval benchmark and track recall@k, reciprocal rank, context relevance, and groundedness across retrieval variants.
-- Connect the workflow to persistent storage and user history.
-- Add a frontend or interactive interface for end-to-end usage.
+- Connect the workflow to persistent storage (PostgreSQL + Alembic) and user history.
+- Add authentication (API keys, JWT) and tenant isolation.
+- Add observability (LangSmith tracing, Prometheus metrics, structured logging).
+- Wire the pre-review human-in-the-loop step into the default prediction workflow.
+- Improve the Streamlit UI with conversation history, document management, and visualization.
