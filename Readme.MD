@@ -117,7 +117,15 @@ Chem_Procress_studio/
 │   └── main.py             # FastAPI application entrypoint and health route.
 ├── database/
 │   ├── chroma/             # Chroma persistence directory.
-│   └── postgress/          # PostgreSQL storage folder placeholder.
+│   ├── postgress/          # PostgreSQL storage folder placeholder.
+│   ├── chem_process_studio_schema.sql   # PostgreSQL schema (auto-loads on init)
+│   ├── DATABASE_DESIGN.md               # Full database design document
+│   ├── database.py                       # Async SQLAlchemy engine/session
+│   ├── models.py                         # SQLAlchemy ORM models
+│   ├── service.py                        # High-level database operations
+│   ├── test_database.py                  # Pytest suite (6 tests)
+│   ├── docker-compose.yml                # PostgreSQL + Chroma + Redis
+│   └── Untitled Diagram.drawio           # ER diagram (draw.io)
 ├── graph/
 │   └── state.py            # Shared workflow state definition placeholder.
 ├── middleware/
@@ -285,7 +293,7 @@ This gives the predictor and verifier access to literature-based context.
 | Supervisor orchestration | Implemented as a central planner/executor |
 | Human review flow | Implemented as a review interrupt pattern |
 | API server | `/predict` endpoint implemented; upload and operational endpoints remain |
-| Persistent database integration | Still in progress |
+| Persistent database integration | **Implemented** (PostgreSQL + SQLAlchemy + async) |
 | Full end-to-end UI | Streamlit test UI implemented |
 | Retrieval V2 | Implemented: Chroma + BM25 + RRF + cross-encoder fallback |
 | Retrieval evaluation | Metric helpers implemented; benchmark dataset/results pending |
@@ -298,6 +306,7 @@ This gives the predictor and verifier access to literature-based context.
 ### Prerequisites
 
 - Python 3.10+
+- Docker & Docker Desktop (for PostgreSQL, Chroma, Redis)
 - A working LLM provider configuration for the wrappers in the project
 - Optional but recommended: a prepared Chroma persistence directory
 
@@ -311,15 +320,76 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Environment variables
+### Database Setup (PostgreSQL + Chroma + Redis)
 
-Create a `.env` file in the project root with values such as:
+The project uses a multi-database architecture:
+
+| Database | Purpose | Container |
+|----------|---------|-----------|
+| **PostgreSQL** | Primary relational DB (users, workflows, documents, predictions) | `chem-studio-postgres` |
+| **Chroma** | Vector embeddings for semantic search | `chem-studio-chroma` |
+| **Redis** | Cache, session storage, task queue | `chem-studio-redis` |
+
+Start all databases:
+
+```bash
+cd database
+docker compose up -d
+```
+
+This creates:
+- Database: `chem_process_studio`
+- User: `chemstudio`
+- Password: `chemstudio_dev` (or set `POSTGRES_PASSWORD` in `.env`)
+- Ports: PostgreSQL 5432, Chroma 8000, Redis 6379
+
+### Database Schema
+
+The schema is defined in:
+- `database/chem_process_studio_schema.sql` — Raw SQL (run on first init)
+- `database/models.py` — SQLAlchemy ORM models
+- `database/DATABASE_DESIGN.md` — Full design document
+
+Key tables:
+- `users`, `api_keys` — Authentication
+- `documents`, `document_chunks` — PDF ingestion tracking
+- `workflow_runs`, `workflow_steps` — Workflow persistence & resume
+- `predictions` — Prediction history
+- `human_reviews` — Human-in-the-loop audit trail
+- `audit_logs` — Immutable action log
+
+### Run Database Tests
+
+```bash
+cd D:\Chem_Procress_studio
+pytest database/test_database.py -v
+```
+
+Tests verify: connection, CRUD operations, foreign keys, JSONB fields, constraints.
+
+### Environment Variables
+
+Create a `.env` file in the project root:
 
 ```env
+# Database
+DATABASE_URL=postgresql+psycopg://chemstudio:chemstudio_dev@localhost:5432/chem_process_studio
+TEST_DATABASE_URL=postgresql+psycopg://chemstudio:chemstudio_dev@localhost:5432/chem_process_studio_test
+
+# Chroma
+CHROMA_HOST=localhost
+CHROMA_PORT=8000
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+
+# Embeddings / LLMs
 Embedding_MODEL=BAAI/bge-small-en-v1.5
 OPENAI_API_KEY=your_key_here
 GOOGLE_API_KEY=your_key_here
 ```
+
+See `.env.example` for all options.
 
 ---
 
@@ -330,7 +400,7 @@ GOOGLE_API_KEY=your_key_here
 - The retrieval flow ingests the PDF paths supplied in `pdf_context` before running the supervisor; the current API does not yet expose a multipart document-upload endpoint.
 - Retrieval V2 also maintains `database/bm25_index.json`; this local JSON index is appropriate for the current development setup, not yet for multi-process production workloads.
 - The cross-encoder reranker is lazy-loaded and falls back to RRF results if its model is unavailable.
-- **Added:** LLM verification/explanation calls have graceful fallbacks (neutral scores, template reports) when Nemotron API credits are exhausted (402 errors).
+- **Added:** PostgreSQL database layer with async SQLAlchemy, document ingestion persistence, workflow run tracking, and test coverage (6 tests passing). See `database/` for schema, models, service layer, and docker-compose.
 - The supervisor is the main integration point for workflow control, retries, and human review.
 - The API is usable for the current prediction workflow, but authentication, tenant isolation, durable document lifecycle, and production observability are still needed.
 - The project is a strong foundation for a research-oriented chemistry assistant, but it still needs more integration work to become a complete application.
@@ -344,7 +414,7 @@ GOOGLE_API_KEY=your_key_here
 - Expand the verifier logic and make the confidence thresholds more domain-specific.
 - Build a labeled retrieval benchmark and track recall@k, reciprocal rank, context relevance, and groundedness across retrieval variants.
 - Connect the workflow to persistent storage (PostgreSQL + Alembic) and user history.
-- Add authentication (API keys, JWT) and tenant isolation.
+- Add authentication (API keys, JWT) and tenant isolation — **schema ready** (`users`, `api_keys` tables).
 - Add observability (LangSmith tracing, Prometheus metrics, structured logging).
 - Wire the pre-review human-in-the-loop step into the default prediction workflow.
 - Improve the Streamlit UI with conversation history, document management, and visualization.
