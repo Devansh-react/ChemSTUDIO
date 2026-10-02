@@ -112,6 +112,7 @@ def ingest_pdf(pdf_path: str) -> dict[str, Any]:
         "pdf_name": pages[0].metadata.get("pdf_name"),
         "total_pages": total_pages,
         "chunks_created": len(chunks),
+        "chunks": chunks,
         "chroma": chroma_result,
         "bm25": bm25_result,
     }

@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -28,4 +29,9 @@ class PredictionRequest(BaseModel):
 
     metadata: Dict[str, Any] = Field(
         default_factory=dict
+    )
+
+    user_id: Optional[str] = Field(
+        default=None,
+        description="User ID for document ownership"
     )

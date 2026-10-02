@@ -1,0 +1,11 @@
+    dtype=torch.bool,
+                    device=Q.device,
+                )
+            )
+            attn_bias = attn_bias.masked_fill(~causal_mask, float("-inf"))
+
+        # Apply attention mask
+        if attn_mask is not None:
+            if attn_mask.dtype == torch.bool:
+                # Boolean mask: True means participate in attention
+                attn_bias = attn_bias.masked_fill(~att

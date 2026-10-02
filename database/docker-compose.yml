@@ -1,0 +1,37 @@
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: chem-studio-postgres
+    environment:
+      POSTGRES_DB: chem_process_studio
+      POSTGRES_USER: chemstudio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chemstudio_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./chem_process_studio_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chemstudio -d chem_process_studio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+# # From the database folder
+# cd D:\Chem_Procress_studio\database
+# docker compose up -d
+# Then verify:
+# # Check container is running
+# docker compose ps
+
+# # Connect to psql
+# docker compose exec postgres psql -U chemstudio -d chem_process_studio
+
+# # List tables
+# docker compose exec postgres psql -U chemstudio -d chem_process_studio -c "\dt"

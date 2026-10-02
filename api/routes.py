@@ -24,7 +24,7 @@ async def predict(request:PredictionRequest):
     )
     # run this pdf upload in different thread 
     if request.pdf_context:
-        ingestion_update = await run_in_threadpool(pdf_upload,state)
+        ingestion_update = await run_in_threadpool(pdf_upload, state, request.user_id)
         state.update(ingestion_update)
     
     supervisor = SupervisorAgent()
