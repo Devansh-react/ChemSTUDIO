@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from starlette.concurrency import run_in_threadpool
 
 from agents.supervisor import SupervisorAgent
@@ -7,25 +8,31 @@ from schemas.request import PredictionRequest
 from schemas.response import PredictionResponse
 from services.pdf_inestion_services import pdf_upload
 
+from database.models import User  
+from api.auth import get_current_user, require_predict_scope
 
 router = APIRouter()
 
 @router.post(
     "/predict",
     response_model=PredictionResponse,
-    tags=["Reaction_Prediction"]
-    )
-async def predict(request:PredictionRequest):
+    tags=["Reaction_Prediction"],
+    dependencies=[Depends(require_predict_scope)],  # ADD SCOPE CHECK HERE
+)
+async def predict(
+    request: PredictionRequest,
+    user: User = Depends(get_current_user),  # ADD USER DEPENDENCY
+):
+    # Attach user_id to request for document ownership
+    request.user_id = str(user.id)
+
     state = create_prediction_state(
         smiles=request.reactants,
         conditions=request.conditions,
         mechanism=request.mechanism,
-        uploaded_docs=request.pdf_context
+        uploaded_docs=request.pdf_context,
     )
-    # run this pdf upload in different thread 
-    if request.pdf_context:
-        ingestion_update = await run_in_threadpool(pdf_upload, state, request.user_id)
-        state.update(ingestion_update)
+
     
     supervisor = SupervisorAgent()
     
@@ -38,10 +45,7 @@ async def predict(request:PredictionRequest):
     metadata = {
         **(result.get("prediction_metadata") or {}),
         "document_ids": result.get("document_ids", []),
-        "ingestion_results": result.get(
-            "ingestion_results",
-            [],
-        ),
+        "ingestion_results": result.get("ingestion_results",[],),
         "retrieved_context": result.get("retrieved_context", []),
     }
     return PredictionResponse(

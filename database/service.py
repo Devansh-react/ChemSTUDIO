@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 from typing import Optional, List
+from annotated_types import doc
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,9 +65,13 @@ class DatabaseService:
             return result.scalar_one_or_none()
 
     async def update_api_key_last_used(self, api_key_id: UUID) -> None:
+        """Update last_used_at timestamp for an API key."""
+        from datetime import datetime, timezone
         async with self.db.session() as session:
             await session.execute(
-                update(ApiKey).where(ApiKey.id == api_key_id).values(last_used_at=datetime.utcnow())
+                update(ApiKey)
+                .where(ApiKey.id == api_key_id)
+                .values(last_used_at=datetime.now(timezone.utc))
             )
             await session.commit()
 
@@ -108,7 +113,11 @@ class DatabaseService:
                 update(Document).where(Document.id == doc_id).values(**values)
             )
             await session.commit()
-            return await self.get_document(doc_id)
+
+            document = await self.get_document(doc_id)
+            if document is None:
+                raise LookupError(f"Document {doc_id} not found")
+            return document
 
     async def get_document(self, doc_id: UUID) -> Optional[Document]:
         async with self.db.session() as session:
