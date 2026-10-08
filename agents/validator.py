@@ -14,11 +14,13 @@ def validate_agent(state: State):
         + result.get("warnings", result.get("warning", []))
     )
 
+    is_valid = result.get("is_valid", False)
+
     return {
-        "validation": result.get("is_valid", False),
+        "validation": is_valid,
         "warnings": state.get("warnings", []) + validation_warnings,
         "canonical_smiles": result.get("canonical_smiles"),
-        "status": "validated",
+        "status": "validated" if is_valid else "failed",
     }
 
 #  check for the condition

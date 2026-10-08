@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://chemstudio:chemstudio_dev@localhost:5432/chem_process_studio"
 
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    model: str = "nvidia/nemotron-3-ultra-550b-a55b"
     model_endpoint: str = "https://devansh-react--chemstudio-api-fastapi.modal.run"
     mistral_api_key: str | None = None
     nemotron_api_key: str | None = None

@@ -21,18 +21,30 @@ COLLECTION = os.getenv(
     "chemistry_literature_bge_small",
 )
 
-embeddings = FastEmbedEmbeddings(model_name=model)
-
 DIRECTORY = os.getenv(
     "CHROMA_PERSIST_DIRECTORY",
     "database/chroma",
 )
 
-db = Chroma(
-    collection_name= COLLECTION,
-    persist_directory = DIRECTORY,
-    embedding_function=embeddings
-)
+_db: Chroma | None = None
+
+
+def _get_db() -> Chroma:
+    """Initialize the embedding model only when retrieval is actually used.
+
+    Importing the prediction API must not attempt a network download for an
+    optional retrieval model.  This also lets predictions without PDFs run in
+    offline deployments.
+    """
+    global _db
+    if _db is None:
+        embeddings = FastEmbedEmbeddings(model_name=model)
+        _db = Chroma(
+            collection_name=COLLECTION,
+            persist_directory=DIRECTORY,
+            embedding_function=embeddings,
+        )
+    return _db
 def normalise_text(text: str) -> str:
     return " ".join(text.split())
 
@@ -105,7 +117,7 @@ def _chunks_not_already_indexed(
     if not chunk_ids:
         return [], []
 
-    existing = db.get(
+    existing = _get_db().get(
         ids=chunk_ids,
         include=[],
     )
@@ -129,7 +141,7 @@ def add_document(documents:list[Document]):
     new_docs, new_id = _chunks_not_already_indexed(documents)
     
     if new_docs:
-        db.add_documents(
+        _get_db().add_documents(
             documents=new_docs,
             ids = new_id
         )
@@ -148,7 +160,7 @@ def dense_search(query: str,k:int = 20,  metadata_filter : dict[str,Any]| None =
     Smaller Chroma distance values indicate closer semantic matches.
     RRF will later combine only rankings, so no score normalization is needed.
     """
-    results = db.similarity_search_with_score(
+    results = _get_db().similarity_search_with_score(
         query=query,
         k=k,
         filter=metadata_filter
@@ -182,7 +194,7 @@ def similarity_score_threshold(
     Note: this remains dense-only. Hybrid retrieval will replace this
     call in RAG_tool.py in a later step.
     """
-    retriever = db.as_retriever(
+    retriever = _get_db().as_retriever(
         search_type="similarity_score_threshold",
         search_kwargs={
             "score_threshold": score_threshold,
@@ -198,7 +210,7 @@ def mmr_search(
     lambda_mult: float = 0.5,
 ):
     """Existing MMR API retained while hybrid retrieval is introduced."""
-    retriever = db.as_retriever(
+    retriever = _get_db().as_retriever(
         search_type="mmr",
         search_kwargs={
             "k": k,

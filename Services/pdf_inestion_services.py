@@ -2,6 +2,7 @@ from tools.retrieval.RAG_tool import ingest_pdf
 from utils.schema import ReactionState
 from database.service import DatabaseService
 from database.database import Database
+from uuid import UUID
 import os
 import hashlib
 import asyncio

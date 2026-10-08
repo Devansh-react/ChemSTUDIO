@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from dotenv import load_dotenv
-from sentence_transformers import CrossEncoder
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 load_dotenv()
 
@@ -29,9 +30,14 @@ class CrossEncoderReranker:
         self._model: CrossEncoder | None = None
 
     @property
-    def model(self) -> CrossEncoder:
+    def model(self) -> Any:
         """Load the reranking model only when the first search needs it."""
         if self._model is None:
+            # sentence-transformers imports PyTorch and can be slow or
+            # unavailable in an API-only deployment. Keep that optional
+            # dependency out of the prediction application's import path.
+            from sentence_transformers import CrossEncoder
+
             self._model = CrossEncoder(self.model_name)
 
         return self._model

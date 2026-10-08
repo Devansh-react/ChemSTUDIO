@@ -1,3 +1,4 @@
+import math
 import os
 from datetime import datetime
 from typing import Any, Dict
@@ -159,7 +160,17 @@ class ReactionPredictor:
 
             response.raise_for_status()
 
-            data = response.json()
+            try:
+                data = response.json()
+            except ValueError as error:
+                raise PredictionAPIError(
+                    "Prediction API returned an invalid JSON response."
+                ) from error
+
+            if not isinstance(data, dict):
+                raise PredictionAPIError(
+                    "Prediction API returned an invalid response format."
+                )
 
             if not data.get("success", False):
 
@@ -198,8 +209,11 @@ class ReactionPredictor:
 
             "success": True,
 
-            "prediction":
-                model_output.get("prediction"),
+            "prediction": model_output.get("prediction"),
+
+            "confidence": self._parse_confidence(
+                model_output.get("confidence")
+            ),
 
             "mechanism":
                 self.request.get("mechanism"),
@@ -248,6 +262,19 @@ class ReactionPredictor:
         return self.postprocess(
             model_output
         )
+
+    @staticmethod
+    def _parse_confidence(value: Any) -> float:
+        """Return a finite confidence score in the API's expected range."""
+        try:
+            confidence = float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
+        if not math.isfinite(confidence):
+            return 0.0
+
+        return min(max(confidence, 0.0), 1.0)
 
     # --------------------------------------------------
     # Cleanup

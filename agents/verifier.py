@@ -49,7 +49,7 @@ def verifier_agent(state: State):
                 "context_score": 0.0,
                 "mechanism_score": 0.0
             },
-
+            "status": "verified",
         }
 
     # ==========================
@@ -171,5 +171,6 @@ def verifier_agent(state: State):
 
             "mechanism_score":
                 mechanism_score
-        }
+        },
+        "status": "verified",
     }

@@ -8,6 +8,7 @@ streamlit
 python-dotenv
 pydantic
 pydantic-settings
+email-validator
 
 # LangChain & LangGraph
 langchain
@@ -49,3 +50,6 @@ httpx
 aiohttp
 requests
 
+# Testing
+pytest
+pytest-asyncio

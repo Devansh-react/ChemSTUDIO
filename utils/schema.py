@@ -1,4 +1,5 @@
-from typing import TypedDict, List, Dict, Optional, Literal, Any
+from typing_extensions import TypedDict
+from typing import List, Dict, Optional, Literal, Any
 
 
 # ==========================================================
@@ -213,3 +214,12 @@ class ReactionState(TypedDict):
     # ------------------------------------------------------
 
     messages: Optional[List[str]]
+
+    # ------------------------------------------------------
+    # Workflow Control
+    # Used by Supervisor for workflow orchestration
+    # ------------------------------------------------------
+
+    workflow_plan: Optional[List[str]]
+    workflow_index: Optional[int]
+    next_agent: Optional[str]

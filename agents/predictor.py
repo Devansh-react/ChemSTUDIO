@@ -1,4 +1,4 @@
-from tools.prediction.Rxn_predict_tool import ReactionPredictor
+from tools.prediction.Rxn_predict_tool import PredictionAPIError, ReactionPredictor
 from utils.schema import ReactionState as State
 
 def predict_reaction(state: State):
@@ -25,16 +25,28 @@ def predict_reaction(state: State):
         "retrieved_context": state.get("retrieved_context", []),
     }
 
-    predictor = ReactionPredictor(model_request)
-
     try:
-        prediction_result = predictor.predict()
-    finally:
-        predictor.close()
+        predictor = ReactionPredictor(model_request)
+        try:
+            prediction_result = predictor.predict()
+        finally:
+            predictor.close()
+    except (PredictionAPIError, ValueError) as error:
+        return {
+            "prediction": None,
+            "confidence": 0.0,
+            "mechanism": mechanism,
+            "prediction_metadata": None,
+            "warnings": state.get("warnings", []) + [
+                f"Prediction service unavailable: {error}"
+            ],
+            "status": "failed",
+        }
 
     return {
         "prediction": prediction_result.get("prediction"),
         "confidence": prediction_result.get("confidence") or 0.0,
         "mechanism": prediction_result.get("mechanism"),
         "prediction_metadata": prediction_result.get("prediction_metadata"),
+        "status": "predicted",
     }

@@ -67,5 +67,6 @@ Final System Status: {'Completed with LLM unavailable' if prediction else 'Faile
 """
 
     return {
-        "explanation_report": report
+        "explanation_report": report,
+        "status": "explained",
     }

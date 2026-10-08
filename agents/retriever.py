@@ -102,6 +102,7 @@ def retriever_agent(state: ReactionState) -> dict[str, Any]:
         return {
             "external_doc_available": False,
             "retrieved_context": [],
+            "status": "retrieved",
         }
 
     query = build_chemistry_query(state)
@@ -126,6 +127,7 @@ def retriever_agent(state: ReactionState) -> dict[str, Any]:
             "warnings": state.get("warnings", []) + [
                 "No relevant literature chunks were found."
             ],
+            "status": "retrieved",
         }
 
     try:
@@ -144,9 +146,11 @@ def retriever_agent(state: ReactionState) -> dict[str, Any]:
             "warnings": state.get("warnings", []) + [
                 f"Reranker unavailable; using RRF results. {error}"
             ],
+            "status": "retrieved",
         }
 
     return {
         "external_doc_available": True,
         "retrieved_context": _format_context(final_candidates),
+        "status": "retrieved",
     }
