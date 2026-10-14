@@ -1,0 +1,29 @@
+Chem Process Studio - Startup Instructions
+=========================================
+
+Open two PowerShell terminals in D:\Chem_Procress_studio.
+
+1. Start the backend (Terminal 1)
+---------------------------------
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+
+2. Start the frontend (Terminal 2)
+----------------------------------
+.\.venv\Scripts\Activate.ps1
+python -m streamlit run frontend\streamlit_app.py
+
+Open the frontend at http://localhost:8501.
+Backend API documentation: http://127.0.0.1:8000/docs
+
+3. Start PostgreSQL (needed for authentication and prediction)
+--------------------------------------------------------------
+From the project root, run:
+docker compose -f database\docker-compose.yml up -d
+
+First-time setup (if the virtual environment is not installed)
+--------------------------------------------------------------
+From the project root, run:
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt

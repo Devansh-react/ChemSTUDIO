@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 from utils.schema import ReactionState as State
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables import RunnableConfig
 
 from prompts.supervisor_prompt import SUPERVISOR_PROMPT
@@ -51,7 +52,9 @@ class SupervisorAgent:
         # Start at supervisor
         workflow.add_edge(START, "supervisor")
         
-        return workflow.compile()
+        # Compile with checkpointer for interrupt/resume support
+        checkpointer = MemorySaver()
+        return workflow.compile(checkpointer=checkpointer)
 
     def _create_agent_node(self, agent_name: str, agent_info: dict):
         """Create a node function for an agent that returns Command to route back to supervisor."""
@@ -138,7 +141,7 @@ class SupervisorAgent:
         
         # If we have a next_agent but the previous agent just completed,
         # advance the workflow index
-        completed_statuses = {"validated", "retrieved", "predicted", "verified", "explained"}
+        completed_statuses = {"validated", "retrieved", "pre_reviewed", "predicted", "verified", "explained"}
         if state.get("status") in completed_statuses:
             workflow = state.get("workflow_plan", [])
             index = state.get("workflow_index", 0)
@@ -253,9 +256,12 @@ class SupervisorAgent:
         if not prediction_text:
             return
         
+        predictor_retry = state.get("retry_count", {}).get("predictor", 0)
+        attempt_no = max(1, predictor_retry + 1)
+        
         await db.create_prediction(
             run_id=self.workflow_run_id,
-            attempt_no=state.get("retry_count", {}).get("predictor", 1),
+            attempt_no=attempt_no,
             prediction=prediction_text,
             confidence=state.get("confidence") or 0.0,
             mechanism=state.get("prediction_mechanism") ,
@@ -281,7 +287,7 @@ class SupervisorAgent:
 
     def plan(self, intent: str) -> list[str]:
         if intent == "prediction":
-            return ["validator", "retriever", "predictor", "verifier", "explainer"]
+            return ["validator", "retriever", "pre_review", "predictor", "verifier", "explainer"]
         elif intent == "validation":
             return ["validator"]
         elif intent == "explanation":
@@ -325,6 +331,8 @@ class SupervisorAgent:
 
     def run(self, state: State):
         import asyncio
+        from uuid import uuid4
+        from langchain_core.runnables import RunnableConfig
         
         try:
             state["status"] = "initialized"
@@ -340,14 +348,21 @@ class SupervisorAgent:
             state["next_agent"] = workflow[0] if workflow else None
 
             # Create workflow run in database
+            thread_id = str(uuid4())
             if self.user_id:
                 try:
                     asyncio.run(self._create_workflow_run(state))
+                    if self.workflow_run_id:
+                        thread_id = str(self.workflow_run_id)
                 except RuntimeError:
                     pass
 
-            # Run the workflow graph
-            result = self.workflow.invoke(state)
+            # Run the workflow graph with checkpointer config
+            config = RunnableConfig(
+                recursion_limit=100,
+                configurable={"thread_id": thread_id}
+            )
+            result = self.workflow.invoke(state, config=config)
 
             # Update final status
             if self.workflow_run_id:
@@ -361,6 +376,7 @@ class SupervisorAgent:
         except Exception as error:
             state["status"] = "failed"
             state["warnings"] = state.get("warnings", []) + [f"Workflow failed: {error}"]
+            return state
             
             if self.workflow_run_id:
                 try:

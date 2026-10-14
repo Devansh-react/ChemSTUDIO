@@ -10,7 +10,9 @@ def pre_review_agent(state: State) -> State:
     prediction model and allows the user to modify it.
     """
 
-    return human_review_agent(
+    result = human_review_agent(
         state,
         mode="pre_prediction"
     )
+    result["status"] = "pre_reviewed"
+    return result

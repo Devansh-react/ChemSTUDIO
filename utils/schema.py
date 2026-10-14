@@ -223,3 +223,6 @@ class ReactionState(TypedDict):
     workflow_plan: Optional[List[str]]
     workflow_index: Optional[int]
     next_agent: Optional[str]
+
+    # Skip human review for non-interactive API calls
+    skip_human_review: Optional[bool]

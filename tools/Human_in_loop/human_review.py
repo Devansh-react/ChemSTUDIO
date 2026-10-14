@@ -68,18 +68,26 @@ def human_review_agent(
     else:
         payload = build_post_payload(state)
 
-    try:
-        response = interrupt(payload)
-    except RuntimeError as e:
-        # Not in a LangGraph context - auto-approve for testing
-        if "get_config" in str(e) or "runnable context" in str(e):
-            response = {
-                "decision": "approve",
-                "comment": "Auto-approved (not in LangGraph context)",
-                "edited_fields": {}
-            }
-        else:
-            raise
+    # Check if we should skip interactive review (e.g., API calls)
+    if state.get("skip_human_review", False):
+        response = {
+            "decision": "approve",
+            "comment": "Auto-approved (human review skipped)",
+            "edited_fields": {}
+        }
+    else:
+        try:
+            response = interrupt(payload)
+        except RuntimeError as e:
+            # Not in a LangGraph context - auto-approve for testing
+            if "get_config" in str(e) or "runnable context" in str(e):
+                response = {
+                    "decision": "approve",
+                    "comment": "Auto-approved (not in LangGraph context)",
+                    "edited_fields": {}
+                }
+            else:
+                raise
 
     valid_actions = payload["actions"]
 

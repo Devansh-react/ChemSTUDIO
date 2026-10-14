@@ -122,6 +122,18 @@ def should_retry_prediction(state: State) -> RetryDecision:
         }
 
     # ---------------------------------------------------
+    # Low confidence check
+    # ---------------------------------------------------
+
+    confidence = state.get("confidence", 0.0)
+    if confidence < 0.50 and predictor_retry < MAX_PREDICTOR_RETRIES:
+        return {
+            "retry": True,
+            "target": "predictor",
+            "reason": f"Low confidence: {confidence:.2f}"
+        }
+
+    # ---------------------------------------------------
     # Everything passed
     # ---------------------------------------------------
 

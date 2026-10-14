@@ -36,6 +36,9 @@ async def predict(
         uploaded_docs=request.pdf_context,
     )
 
+    # Skip human review for API calls (non-interactive)
+    state["skip_human_review"] = True
+
     # Initialize DB service for supervisor
     db = Database()
     db.initialize()
